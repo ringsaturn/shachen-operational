@@ -27,7 +27,7 @@ jobs:
     outputs:
       matrix: ${{ steps.read.outputs.regions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: read
         # tomllib is stdlib, so the matrix comes straight from the region
         # table without installing anything.
@@ -60,7 +60,7 @@ jobs:
       group: process-${{ matrix.region }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v5
         with:
