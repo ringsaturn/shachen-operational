@@ -1,6 +1,6 @@
 """``shachen-ops`` — the one entry point the workflows call.
 
-Four subcommands, all keyed on a region from ``regions.toml``:
+Five subcommands, all keyed on a region from ``regions.toml``:
 
 ``run``
     Process one scan (``--time``, or the newest available) and publish it.
@@ -9,6 +9,10 @@ Four subcommands, all keyed on a region from ``regions.toml``:
     newest first. This is what the schedule runs: GitHub crons fire late and
     sometimes not at all, so the job asks the bucket what is missing rather
     than assuming the cron told it.
+``prune``
+    Enforce the region's retention on the bucket. ``run`` and ``backfill`` do
+    this themselves; the subcommand exists for a dry run and for the case
+    where the budget has been changed and the bucket has to catch up.
 ``bootstrap-camel``
     Stage a region-month of CAMEL emissivity into R2. Manual, credentialed.
 ``scans``
@@ -21,7 +25,7 @@ import re
 import sys
 from pathlib import Path
 
-from shachen_ops import bootstrap, process, publish, scans
+from shachen_ops import bootstrap, process, publish, retain, scans
 from shachen_ops.config import REGIONS_TOML, Region, get_region, load_regions
 
 #: Scans younger than this are left for the next run: an AHI timeline's
@@ -87,6 +91,18 @@ def _process_and_publish(
     return meta
 
 
+def _prune(region: Region, store, args: argparse.Namespace) -> None:
+    """Enforce retention after publishing, unless the caller opted out.
+
+    This runs whether or not anything was published: a run that finds nothing
+    to do is exactly the run after which the bucket is still over budget, and
+    the storage ceiling is not conditional on new data arriving.
+    """
+    if getattr(args, "no_prune", False):
+        return
+    _log(retain.prune_region(store, region).summary())
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     region = get_region(args.region, args.regions)
     store = publish.store_from_env(args.dest)
@@ -97,10 +113,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         scan = scans.nearest_scan(region, parse_time(args.time))
     _log(f"{region.key}: scan {scan.stamp}")
 
-    if not args.force and publish.is_published(store, region, scan):
+    if args.force or not publish.is_published(store, region, scan):
+        _process_and_publish(region, scan, store, args)
+    else:
         _log("  already published, nothing to do")
-        return 0
-    _process_and_publish(region, scan, store, args)
+    _prune(region, store, args)
     return 0
 
 
@@ -135,11 +152,27 @@ def cmd_backfill(args: argparse.Namespace) -> int:
             failures.append(f"{scan.stamp}: {type(error).__name__}: {error}")
             _log(f"  FAILED {type(error).__name__}: {error}")
 
+    _prune(region, store, args)
+
     if failures:
         _log(f"{region.key}: {len(failures)} of {len(todo)} scan(s) failed")
         for line in failures:
             _log(f"  {line}")
         return 1
+    return 0
+
+
+def cmd_prune(args: argparse.Namespace) -> int:
+    region = get_region(args.region, args.regions)
+    store = publish.store_from_env(args.dest)
+    report = retain.prune_region(store, region, dry_run=args.dry_run)
+    _log(report.summary())
+    for stamp in report.dropped:
+        _log(f"  drop   {stamp}")
+    for stamp in report.stripped:
+        _log(f"  strip  {stamp} ({retain.FIELDS})")
+    for key in report.ancillary_deleted:
+        _log(f"  drop   {key}")
     return 0
 
 
@@ -203,6 +236,11 @@ def build_parser() -> argparse.ArgumentParser:
                 action="store_true",
                 help="reprocess and republish scans the manifests already carry",
             )
+            sub.add_argument(
+                "--no-prune",
+                action="store_true",
+                help="publish without enforcing retention (the bucket will grow past its budget)",
+            )
 
     run = subparsers.add_parser("run", help="process and publish one scan")
     add_common(run, compute=True)
@@ -226,6 +264,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="publish one scan per N minutes (default: the region's publish_every_minutes)",
     )
     backfill.set_defaults(func=cmd_backfill)
+
+    prune = subparsers.add_parser("prune", help="enforce the region's retention on the bucket")
+    add_common(prune, compute=False)
+    prune.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what retention would remove without deleting anything",
+    )
+    prune.set_defaults(func=cmd_prune)
 
     camel = subparsers.add_parser("bootstrap-camel", help="stage a region-month of CAMEL into R2")
     add_common(camel, compute=False)

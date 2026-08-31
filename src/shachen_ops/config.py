@@ -51,6 +51,13 @@ ROOT_PREFIX = "shachen-ops"
 #: published key carries.
 LAYOUT_VERSION = "v1"
 
+#: Retention defaults, in scans. The bucket has a hard 2 GB budget, and a
+#: published scan is roughly 4 MB of imagery plus 7-20 MB of field data, so the
+#: two tiers are sized separately: imagery is cheap enough to keep for days,
+#: the netCDF is not. See :mod:`shachen_ops.retain`.
+KEEP_SCANS = 144
+KEEP_FIELD_SCANS = 12
+
 
 @dataclass(frozen=True)
 class Region:
@@ -64,6 +71,8 @@ class Region:
     cadence_minutes: int
     bbox: tuple[float, float, float, float]
     publish_every_minutes: int = 30
+    keep_scans: int = KEEP_SCANS
+    keep_field_scans: int = KEEP_FIELD_SCANS
     tuning: str = "abi"
     description: str = ""
 
@@ -108,6 +117,16 @@ def _region(key: str, entry: dict) -> Region:
             f"region {key!r} publishes every {every} min, which is not a multiple "
             f"of its {entry['cadence_minutes']}-min scan cadence"
         )
+    keep = int(entry.get("keep_scans", KEEP_SCANS))
+    keep_fields = int(entry.get("keep_field_scans", KEEP_FIELD_SCANS))
+    if keep < 1 or keep_fields < 1:
+        raise ValueError(f"region {key!r} must keep at least one scan and one field file")
+    if keep_fields > keep:
+        # The field file lives inside the scan it belongs to, so keeping more
+        # of them than there are scans is a config error, not a wider tier.
+        raise ValueError(
+            f"region {key!r} keeps fields for {keep_fields} scans but only keeps {keep} scans"
+        )
     if not (lon_min < lon_max and lat_min < lat_max):
         # An antimeridian-crossing domain would also land here; the GFS regrid
         # works in -180..180, so that is a real restriction, not an oversight.
@@ -121,6 +140,8 @@ def _region(key: str, entry: dict) -> Region:
         cadence_minutes=int(entry["cadence_minutes"]),
         bbox=bbox,
         publish_every_minutes=int(entry.get("publish_every_minutes", entry["cadence_minutes"])),
+        keep_scans=keep,
+        keep_field_scans=keep_fields,
         tuning=tuning,
         description=entry.get("description", ""),
     )

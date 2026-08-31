@@ -41,14 +41,50 @@ shachen-ops/v1/{region}/index/{YYYY}/{MM}.json                   month listing
 ```
 
 `latest.json` is the entry point. It carries `latest` — the full `meta.json`
-body of the newest published scan — and `recent`, the last twelve scans as
-`{scan_start, prefix, assets}`. Scan objects are immutable and cached
-forever; `latest.json` is cached for a minute and the month index for five.
+body of the newest published scan — `recent`, the last twelve scans as
+`{scan_start, prefix, assets}`, and `retention`, which says how long each kind
+of object survives. Imagery is immutable and cached forever; `latest.json` is
+cached for a minute, the month index for five, and `meta.json` for an hour —
+it is the one scan object that changes, because retention takes a scan's
+netCDF away partway through its life and the manifest has to stop advertising
+it.
 
 Write order is what makes a rerun safe: scan objects, then `meta.json` (which
 is what marks a scan published), then the month index, then `latest.json`.
 A reader following the pointer never arrives at a half-written scan, and a job
 that dies mid-publish leaves a scan the next backfill simply redoes.
+
+## Retention
+
+The bucket has a 2 GB budget and the pipeline writes about 1.7 GB a day, so
+nothing is kept indefinitely. `debra.nc` is four fifths of the bytes — 7 MB
+for `swus`, 20 MB for `gobi`, against 4 MB of imagery — so it gets a much
+shorter life than the pictures:
+
+| Age | What survives |
+|---|---|
+| newest 12 scans (6 h) | everything, `debra.nc` included |
+| back to 144 scans (3 days) | `debra.png`, `dustrgb.png`, `meta.json` |
+| older | nothing; the scan is deleted |
+
+That settles near 1.5 GB across both regions. Both numbers are per region in
+`regions.toml` and are counts of scans rather than durations: an outage must
+not let the bucket blow past its ceiling once the pipeline catches up, and a
+count bounds the bytes whatever the clock says. Staged CAMEL months are kept
+two deep, enough that a backfill reaching across a month boundary still finds
+the month it needs.
+
+Pruning is part of the scheduled job — `run` and `backfill` both do it, after
+publishing and whether or not they published anything, since the run that
+finds nothing to do is exactly the one after which the bucket is still over
+budget. It is a step in the pipeline rather than an R2 lifecycle rule because
+the manifests have to stay honest: a lifecycle expiry would delete objects
+that `latest.json` and the month index still point at. `shachen-ops prune
+--region <key> --dry-run` reports what would go without touching anything.
+
+The listing is the source of truth, not the manifests — one `list_objects`
+over the region prefix says what actually exists — so a prune is idempotent
+and a half-finished publish cannot desynchronise the policy from the bucket.
 
 Every `meta.json` records the inputs, not just the output — which GFS cycle
 and forecast hour supplied the skin temperature, which CAMEL month supplied
@@ -67,6 +103,7 @@ run_dust_rgb      baseline composite
 render            georeferenced PNGs with coastlines and a graticule
 write netCDF      compressed, single precision
 publish           objects, meta.json, month index, latest.json
+prune             enforce retention; fix up the manifests behind it
 ```
 
 ### Ancillary data
@@ -107,6 +144,7 @@ $ uv run shachen-ops bootstrap-camel --region swus --dest ./localbucket
 $ uv run shachen-ops run --region swus --dest ./localbucket
 $ uv run shachen-ops backfill --region swus --since 2h --dest ./localbucket
 $ uv run shachen-ops scans --region swus --since 2h --dest ./localbucket
+$ uv run shachen-ops prune --region swus --dest ./localbucket --dry-run
 ```
 
 `--dest` is a directory to publish into; omit it (or pass `r2`) to publish to
@@ -118,14 +156,16 @@ write the same layout a real publish would, so they exercise the same code.
 window are missing and processes those, newest first — GitHub crons fire late
 and sometimes not at all, and a missed run heals itself on the next one
 instead of leaving a hole. Scans younger than three minutes are left alone,
-since an AHI timeline's directory appears before every strip is in it.
+since an AHI timeline's directory appears before every strip is in it. It
+prunes when it is done; `--no-prune` skips that, and the standalone `prune`
+subcommand does it on its own.
 
 ## Workflows
 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `ci` | push, PR | ruff, pytest, region table parses |
-| `process` | every 30 min, manual | backfill each region, one job per region |
+| `process` | every 30 min, manual | backfill each region, then prune it, one job per region |
 | `bootstrap-ancillary` | manual | stage a region-month of CAMEL into R2 |
 
 `process` builds its matrix from `regions.toml`, so a new region needs no
@@ -148,11 +188,14 @@ Measured on one scan of each region, on a laptop:
 | Wall time, inputs cached | ~5 s | ~10 s |
 | Peak RSS | 2.9 GB | 2.6 GB |
 | Published per scan | ~11 MB | ~23 MB |
+| of which `debra.nc` | 7 MB | 20 MB |
 
 So a run is dominated by fetching, not by DEBRA, and fits a 4-vCPU / 16 GB
-runner with room to spare. At 48 scans a day across both regions that is
-roughly 1 GB a day of new objects. The PNGs are small and worth keeping
-indefinitely; if the netCDFs become the problem, they are the thing to expire.
+runner with room to spare. At 48 scans a day across both regions that is about
+1.7 GB a day of new objects, against a 2 GB bucket — which is what the
+retention above exists to reconcile, and why the netCDF is the first thing to
+go. Steady state is near 1.5 GB, so R2 storage stays inside a dollar a month
+and the writes (six per scan, ~17k a month) stay inside the free tier.
 
 ## Not here yet
 
