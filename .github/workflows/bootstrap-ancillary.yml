@@ -1,0 +1,65 @@
+name: bootstrap-ancillary
+
+# Stages a region-month of CAMEL emissivity into the private R2 ancillary
+# prefix. Manual on purpose: it is the only job that holds Earthdata
+# credentials, and a month only ever needs staging once.
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Region key, or blank for all of them"
+        required: false
+        default: ""
+      month:
+        description: "YYYY-MM to stage (blank = the current month)"
+        required: false
+        default: ""
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: earthdata
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync the locked environment
+        run: uv sync --locked
+
+      - name: Write the Earthdata netrc
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+        run: |
+          umask 077
+          printf 'machine urs.earthdata.nasa.gov login %s password %s\n' \
+            "$EARTHDATA_USERNAME" "$EARTHDATA_PASSWORD" > "$HOME/.netrc"
+
+      - name: Stage CAMEL
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ONLY: ${{ inputs.region }}
+          MONTH: ${{ inputs.month }}
+        run: |
+          keys=$(python3 -c "import tomllib;print(' '.join(sorted(tomllib.load(open('regions.toml','rb')))))")
+          if [ -n "$ONLY" ]; then keys="$ONLY"; fi
+          for key in $keys; do
+            if [ -n "$MONTH" ]; then
+              uv run shachen-ops bootstrap-camel --region "$key" --month "$MONTH"
+            else
+              uv run shachen-ops bootstrap-camel --region "$key"
+            fi
+          done
+
+      - name: Remove the netrc
+        if: always()
+        run: rm -f "$HOME/.netrc"

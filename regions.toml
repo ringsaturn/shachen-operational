@@ -1,0 +1,31 @@
+# Operational regions. Adding a region is a config change, not a code change:
+# every key below is consumed by shachen_ops.config.load_regions.
+#
+# bbox is (lon_min, lat_min, lon_max, lat_max) in degrees and must not cross
+# the antimeridian (the GFS skin-temperature regrid works in -180..180).
+#
+# cadence_minutes is how often the sensor scans; publish_every_minutes is how
+# often we publish, and must be a multiple of it. Publishing every ABI scan
+# would be 288 runs a day per region for a product nobody reads that fast.
+
+[swus]
+satellite = "GOES-19"
+sensor = "abi"
+bucket = "noaa-goes19"
+product = "ABI-L1b-RadC"
+cadence_minutes = 5
+publish_every_minutes = 30
+bbox = [-115.0, 25.0, -95.0, 40.0]
+tuning = "abi"
+description = "Chihuahuan Desert / US Southwest"
+
+[gobi]
+satellite = "Himawari-9"
+sensor = "ahi"
+bucket = "noaa-himawari9"
+product = "AHI-L1b-FLDK"
+cadence_minutes = 10
+publish_every_minutes = 30
+bbox = [80.0, 30.0, 135.0, 55.0]
+tuning = "paper"
+description = "Gobi / Taklamakan to the North China Plain"

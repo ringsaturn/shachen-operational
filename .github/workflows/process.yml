@@ -1,0 +1,91 @@
+name: process
+
+on:
+  schedule:
+    # Every half hour. GitHub's scheduler is best-effort and routinely fires
+    # five to fifteen minutes late, which is why the job backfills a window
+    # rather than assuming the cron told it which scan to process.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Single region key, or blank for all of them"
+        required: false
+        default: ""
+      since:
+        description: "Backfill window (90m, 2h, 1d)"
+        required: false
+        default: "2h"
+      limit:
+        description: "Most scans to process per region"
+        required: false
+        default: "3"
+
+jobs:
+  regions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.regions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        # tomllib is stdlib, so the matrix comes straight from the region
+        # table without installing anything.
+        env:
+          ONLY: ${{ inputs.region }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, tomllib
+          with open("regions.toml", "rb") as handle:
+              keys = sorted(tomllib.load(handle))
+          only = os.environ.get("ONLY", "").strip()
+          if only:
+              if only not in keys:
+                  raise SystemExit(f"unknown region {only!r}; known: {keys}")
+              keys = [only]
+          print("regions=" + json.dumps(keys))
+          PY
+
+  process:
+    needs: regions
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJSON(needs.regions.outputs.matrix) }}
+    concurrency:
+      # Queue rather than race: two runs of one region would fight over that
+      # region's latest.json and month index.
+      group: process-${{ matrix.region }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync the locked environment
+        run: uv sync --locked
+
+      - name: Cache Natural Earth features
+        # cartopy downloads coastlines and borders on first render; without
+        # this every run pays for them again.
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cartopy
+          key: cartopy-naturalearth-v1
+
+      - name: Backfill
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          uv run shachen-ops backfill \
+            --region "${{ matrix.region }}" \
+            --since "${{ inputs.since || '2h' }}" \
+            --limit "${{ inputs.limit || '3' }}"
