@@ -6,12 +6,12 @@ the scheduled job takes, minus the network.
 
 The layout is::
 
-    v1/{region}/{YYYY}/{MM}/{DD}/{HHMMSS}/debra.png
-                                          dustrgb.png
-                                          debra.nc
-                                          meta.json
-    v1/{region}/latest.json          pointer + recent scans, short cache
-    v1/{region}/index/{YYYY}/{MM}.json   month listing, for backfill dedupe
+    shachen-ops/v1/{region}/{YYYY}/{MM}/{DD}/{HHMMSS}/debra.png
+                                                      dustrgb.png
+                                                      debra.nc
+                                                      meta.json
+    shachen-ops/v1/{region}/latest.json          pointer + recent scans, short cache
+    shachen-ops/v1/{region}/index/{YYYY}/{MM}.json   month listing, for backfill dedupe
 
 Write order is what makes a rerun safe: scan objects first, then ``meta.json``
 (which is what marks the scan published), then the month index, and
@@ -26,7 +26,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from shachen_ops.config import LAYOUT_VERSION, Region
+from shachen_ops.config import LAYOUT_VERSION, ROOT_PREFIX, Region
 from shachen_ops.scans import Scan
 
 #: Scan objects never change, so they can be cached forever; the pointer is
@@ -47,15 +47,15 @@ def content_type(path: Path) -> str:
 
 def scan_prefix(region: Region, scan: Scan) -> str:
     """Key prefix (no trailing slash) every object of one scan lives under."""
-    return f"{LAYOUT_VERSION}/{region.key}/{scan.prefix}"
+    return f"{ROOT_PREFIX}/{LAYOUT_VERSION}/{region.key}/{scan.prefix}"
 
 
 def index_key(region: Region, month: dt.date) -> str:
-    return f"{LAYOUT_VERSION}/{region.key}/index/{month:%Y}/{month:%m}.json"
+    return f"{ROOT_PREFIX}/{LAYOUT_VERSION}/{region.key}/index/{month:%Y}/{month:%m}.json"
 
 
 def latest_key(region: Region) -> str:
-    return f"{LAYOUT_VERSION}/{region.key}/latest.json"
+    return f"{ROOT_PREFIX}/{LAYOUT_VERSION}/{region.key}/latest.json"
 
 
 # --------------------------------------------------------------------------

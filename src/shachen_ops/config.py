@@ -42,7 +42,13 @@ SENSOR_GLOBS: dict[str, str] = {"abi": "*.nc", "ahi": "*.DAT*"}
 #: ``paper`` the published Miller et al. 2017/2020 values.
 TUNING: dict[str, DebraConstants] = {"abi": ABI_TUNED, "paper": DEFAULTS}
 
-#: Output layout version, the first path element of every published key.
+#: The bucket is shared, so everything this pipeline writes — published scans
+#: and staged ancillary alike — lives under one root prefix rather than at the
+#: top of the bucket.
+ROOT_PREFIX = "shachen-ops"
+
+#: Output layout version, the path element under :data:`ROOT_PREFIX` that every
+#: published key carries.
 LAYOUT_VERSION = "v1"
 
 

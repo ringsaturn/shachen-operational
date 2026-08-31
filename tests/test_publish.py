@@ -43,7 +43,7 @@ def test_publish_writes_the_scan_then_both_manifests(tmp_path):
     meta = publish_scan(store, REGION, scan, artifacts(tmp_path), {"background": "semianalytic"})
 
     prefix = scan_prefix(REGION, scan)
-    assert prefix == "v1/swus/2026/08/31/130018"
+    assert prefix == "shachen-ops/v1/swus/2026/08/31/130018"
     assert store.exists(f"{prefix}/debra.png")
     assert store.exists(f"{prefix}/meta.json")
     assert meta["assets"] == ["debra.png"]

@@ -32,12 +32,12 @@ at 140.7 °E, not a fetch problem.
 Everything is under a single bucket, keyed by region and scan start time:
 
 ```
-v1/{region}/{YYYY}/{MM}/{DD}/{HHMMSS}/debra.png      DEBRA enhanced imagery
-                                      dustrgb.png    Dust RGB baseline
-                                      debra.nc       confidence + dust tests
-                                      meta.json      what this scan is
-v1/{region}/latest.json                              pointer + recent scans
-v1/{region}/index/{YYYY}/{MM}.json                   month listing
+shachen-ops/v1/{region}/{YYYY}/{MM}/{DD}/{HHMMSS}/debra.png      DEBRA enhanced imagery
+                                                  dustrgb.png    Dust RGB baseline
+                                                  debra.nc       confidence + dust tests
+                                                  meta.json      what this scan is
+shachen-ops/v1/{region}/latest.json                              pointer + recent scans
+shachen-ops/v1/{region}/index/{YYYY}/{MM}.json                   month listing
 ```
 
 `latest.json` is the entry point. It carries `latest` — the full `meta.json`

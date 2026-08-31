@@ -21,11 +21,11 @@ import datetime as dt
 from pathlib import Path
 
 from shachen_ops import gfs
-from shachen_ops.config import Region
+from shachen_ops.config import ROOT_PREFIX, Region
 from shachen_ops.scans import Scan, ahi_local_name, anon_fs, scan_keys
 
 #: R2 prefix the bootstrap job stages subsetted CAMEL months under.
-CAMEL_PREFIX = "ancillary/camel"
+CAMEL_PREFIX = f"{ROOT_PREFIX}/ancillary/camel"
 
 
 def camel_key(region: Region, month: dt.date) -> str:
