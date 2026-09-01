@@ -179,7 +179,8 @@ that region's manifests concurrently.
 Secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for
 everything that publishes; `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` only
 in the `earthdata` environment that `bootstrap-ancillary` runs in;
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for the Pages deploy.
+`CLOUDFLARE_API_TOKEN` for the Pages deploy, which takes the account id from
+`CLOUDFLARE_ACCOUNT_ID` or falls back to `R2_ACCOUNT_ID`, the same account.
 
 ## Viewer
 

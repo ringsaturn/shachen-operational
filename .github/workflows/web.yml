@@ -23,8 +23,19 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # One Cloudflare account holds both the bucket and the site, so the
+          # id the pipeline already has serves here too.
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || secrets.R2_ACCOUNT_ID }}
           workingDirectory: web
+          # The action defaults to wrangler 3.90, which reads Pages settings
+          # out of a wrangler.toml only and fails on wrangler.jsonc with
+          # "Must specify a directory of assets to deploy".
+          wranglerVersion: "4.107.0"
+          # Deploying needs the project to exist; creating one that already
+          # does is an error rather than a no-op, so the failure is dropped
+          # and a real problem surfaces on the deploy below.
+          preCommands: |
+            npx wrangler pages project create shachen-web --production-branch main || true
           # There is no build step: public/ is the site and functions/ is
           # picked up beside it, both read from wrangler.jsonc.
           command: pages deploy
