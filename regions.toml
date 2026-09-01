@@ -6,14 +6,14 @@
 #
 # cadence_minutes is how often the sensor scans; publish_every_minutes is how
 # often we publish, and must be a multiple of it. Publishing every ABI scan
-# would be 288 runs a day per region for a product nobody reads that fast.
+# would be 288 runs a day per region.
 #
 # keep_scans and keep_field_scans are the storage budget, in scans. The bucket
-# holds 2 GB and the pipeline writes ~1.7 GB a day, so the netCDF — four
-# fifths of the bytes — gets a much shorter life than the imagery: at 48 scans
+# holds 2 GB and the pipeline writes ~1.7 GB a day, so the netCDF (four fifths
+# of the bytes) is retained for a shorter period than the imagery: at 48 scans
 # a day, 144 is three days of PNGs and 12 is six hours of debra.nc, for a
 # steady state near 1.5 GB across both regions. Raising either number raises
-# the bill; see shachen_ops.retain.
+# storage cost; see shachen_ops.retain.
 
 [swus]
 satellite = "GOES-19"

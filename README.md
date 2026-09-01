@@ -2,14 +2,14 @@
 
 An unattended pipeline that runs [shachen](https://github.com/ringsaturn/shachen)'s
 DEBRA-Dust algorithm on live GOES ABI and Himawari AHI data from the AWS Open
-Data buckets and publishes the results — imagery, fields, and manifests — to
+Data buckets and publishes the results (imagery, fields, and manifests) to
 Cloudflare R2. All compute runs on GitHub Actions.
 
-Each published scan carries two pictures and one data file: the DEBRA enhanced
+Each published scan carries two images and one data file: the DEBRA enhanced
 composite, in which dust is coloured by detection confidence over an
-unmodified background; the classic EUMETSAT Dust RGB over the same scene, as
-the baseline to compare it against; and a netCDF of the confidence field and
-the tests behind it.
+unmodified background; the EUMETSAT Dust RGB over the same scene, as the
+baseline for comparison; and a netCDF of the confidence field and the dust
+tests it is derived from.
 
 ## Regions
 
@@ -19,13 +19,13 @@ the tests behind it.
 | `gobi` | Himawari-9, `AHI-L1b-FLDK` | 80–135 °E, 30–55 °N | every 30 min |
 
 Regions live in [`regions.toml`](regions.toml); adding one is a config change.
-`publish_every_minutes` is deliberately coarser than the sensor cadence — ABI
+`publish_every_minutes` is deliberately coarser than the sensor cadence: ABI
 scans CONUS every five minutes, and publishing all of it would be 288 runs a
-day for a product nobody reads that fast.
+day per region.
 
 The `gobi` domain reaches the western limb of the Himawari disk, so its
-north-western corner has no data. That is the geometry of a satellite parked
-at 140.7 °E, not a fetch problem.
+north-western corner has no data. Himawari-9 is at 140.7 °E, and that corner
+falls outside the sensor's view.
 
 ## Output layout
 
@@ -40,56 +40,56 @@ shachen-ops/v1/{region}/latest.json                              pointer + recen
 shachen-ops/v1/{region}/index/{YYYY}/{MM}.json                   month listing
 ```
 
-`latest.json` is the entry point. It carries `latest` — the full `meta.json`
-body of the newest published scan — `recent`, the last twelve scans as
-`{scan_start, prefix, assets}`, and `retention`, which says how long each kind
-of object survives. Imagery is immutable and cached forever; `latest.json` is
-cached for a minute, the month index for five, and `meta.json` for an hour —
-it is the one scan object that changes, because retention takes a scan's
-netCDF away partway through its life and the manifest has to stop advertising
-it.
+`latest.json` is the entry point. It carries `latest`, the full `meta.json`
+body of the newest published scan; `recent`, the last twelve scans as
+`{scan_start, prefix, assets}`; and `retention`, the retained lifetime of each
+kind of object. Imagery is immutable and cached indefinitely; `latest.json` is
+cached for a minute and the month index for five. `meta.json` is cached for an
+hour because it is the one scan object that changes: retention deletes a
+scan's netCDF partway through the scan's retained period, and the manifest
+must stop listing it.
 
 Write order is what makes a rerun safe: scan objects, then `meta.json` (which
-is what marks a scan published), then the month index, then `latest.json`.
-A reader following the pointer never arrives at a half-written scan, and a job
-that dies mid-publish leaves a scan the next backfill simply redoes.
+marks a scan published), then the month index, then `latest.json`. A reader
+following the pointer never arrives at a half-written scan, and a job that
+fails mid-publish leaves a scan that the next backfill redoes.
 
 ## Retention
 
 The bucket has a 2 GB budget and the pipeline writes about 1.7 GB a day, so
-nothing is kept indefinitely. `debra.nc` is four fifths of the bytes — 7 MB
-for `swus`, 20 MB for `gobi`, against 4 MB of imagery — so it gets a much
-shorter life than the pictures:
+nothing is kept indefinitely. `debra.nc` is four fifths of the bytes (7 MB
+for `swus`, 20 MB for `gobi`, against 4 MB of imagery), so it is retained for
+a shorter period than the imagery:
 
-| Age | What survives |
+| Age | Retained objects |
 |---|---|
 | newest 12 scans (6 h) | everything, `debra.nc` included |
 | back to 144 scans (3 days) | `debra.png`, `dustrgb.png`, `meta.json` |
 | older | nothing; the scan is deleted |
 
-That settles near 1.5 GB across both regions. Both numbers are per region in
-`regions.toml` and are counts of scans rather than durations: an outage must
-not let the bucket blow past its ceiling once the pipeline catches up, and a
-count bounds the bytes whatever the clock says. Staged CAMEL months are kept
-two deep, enough that a backfill reaching across a month boundary still finds
-the month it needs.
+Steady state is near 1.5 GB across both regions. Both numbers are per region
+in `regions.toml` and are counts of scans rather than durations: a count
+bounds the bytes regardless of elapsed time, so the backlog published after an
+outage cannot take the bucket past its budget. Staged CAMEL months are kept
+two deep, so that a backfill spanning a month boundary still finds the earlier
+month.
 
-Pruning is part of the scheduled job — `run` and `backfill` both do it, after
-publishing and whether or not they published anything, since the run that
-finds nothing to do is exactly the one after which the bucket is still over
-budget. It is a step in the pipeline rather than an R2 lifecycle rule because
-the manifests have to stay honest: a lifecycle expiry would delete objects
-that `latest.json` and the month index still point at. `shachen-ops prune
---region <key> --dry-run` reports what would go without touching anything.
+Pruning is part of the scheduled job: `run` and `backfill` both prune after
+publishing, whether or not they published anything, since a run that publishes
+nothing can still leave the bucket over budget. It is a step in the pipeline
+rather than an R2 lifecycle rule because a lifecycle expiry would delete
+objects that `latest.json` and the month index still point at. `shachen-ops
+prune --region <key> --dry-run` reports what would be deleted without deleting
+anything.
 
-The listing is the source of truth, not the manifests — one `list_objects`
-over the region prefix says what actually exists — so a prune is idempotent
-and a half-finished publish cannot desynchronise the policy from the bucket.
+A prune takes the bucket listing as its input: one `list_objects` over the
+region prefix determines what exists. A prune is therefore idempotent, and a
+half-finished publish cannot desynchronise the policy from the bucket.
 
-Every `meta.json` records the inputs, not just the output — which GFS cycle
-and forecast hour supplied the skin temperature, which CAMEL month supplied
-the emissivity, which shachen version and constant set ran. Outputs stay
-traceable to the fields that made them.
+Every `meta.json` records the inputs alongside the output: which GFS cycle and
+forecast hour supplied the skin temperature, which CAMEL month supplied the
+emissivity, which shachen version and constant set ran. Each output stays
+traceable to the fields it was computed from.
 
 ## How a scan is produced
 
@@ -112,28 +112,30 @@ DEBRA needs a skin temperature field and a background. Neither is available
 in the form shachen was built against, and both substitutions are recorded per
 scan:
 
-**Skin temperature.** MERRA-2 TS lands two to four weeks late, so it cannot
-drive a near-real-time pipeline. GFS `TMP:surface` from `noaa-gfs-bdp-pds`
-stands in: the same quantity from a model that publishes about four hours
-behind its cycle. Only one GRIB2 record is downloaded — each 0.25° file is
-around half a gigabyte and ships a `.idx` sidecar, so the fetch reads the
-index and pulls that one record with a ranged GET, about a megabyte.
+**Skin temperature.** MERRA-2 TS is published two to four weeks after the
+fact, so it cannot supply a near-real-time pipeline. GFS `TMP:surface` from
+`noaa-gfs-bdp-pds` is used instead: the same quantity from a model that
+publishes about four hours behind its cycle. Only one GRIB2 record is
+downloaded. Each 0.25° file is around half a gigabyte and is accompanied by a
+`.idx` sidecar, so the fetch reads the index and retrieves that one record
+with a ranged GET, about a megabyte.
 
-DEBRA's background is calibrated against MERRA-2, and GFS will not agree with
-it everywhere, over desert at night least of all. Quantifying that is future
-work; in the meantime every scan says which field it used.
+DEBRA's background is calibrated against MERRA-2, and GFS skin temperature
+differs from it, with the largest differences expected over desert at night.
+The difference has not been measured here; every scan records which field it
+used.
 
-**Emissivity.** The background here is the semianalytic one — CAMEL
-emissivity times a Planck curve at the skin temperature — because it carries
-no state between scans. CAMEL is a monthly climatology behind Earthdata
+**Emissivity.** The background here is the semianalytic one (CAMEL emissivity
+times a Planck curve at the skin temperature), which requires no state carried
+between scans. CAMEL is a monthly climatology behind Earthdata
 authentication, so it is staged once per region and month into a private R2
 prefix by the `bootstrap-ancillary` workflow; the operational path holds no
 Earthdata credentials.
 
 `CAM5K30EM` V003 ends in December 2023, so an operational month has no granule
-of its own. Since the product *is* a climatology, the substitution is the same
-calendar month from the most recent year that has one, and the year actually
-used is in each scan's `meta.json` as `emissivity.source_month`.
+of its own. The product is a climatology, so the substitution is the same
+calendar month from the most recent year that has a granule; the year used is
+recorded in each scan's `meta.json` as `emissivity.source_month`.
 
 ## Running it
 
@@ -152,17 +154,17 @@ R2, which needs `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`
 in the environment, and optionally `R2_BUCKET` (default `shachen`). Local runs
 write the same layout a real publish would, so they exercise the same code.
 
-`backfill` is what the schedule runs. It asks the bucket which scans in the
-window are missing and processes those, newest first — GitHub crons fire late
-and sometimes not at all, and a missed run heals itself on the next one
-instead of leaving a hole. Scans younger than three minutes are left alone,
-since an AHI timeline's directory appears before every strip is in it. It
-prunes when it is done; `--no-prune` skips that, and the standalone `prune`
-subcommand does it on its own.
+`backfill` is what the schedule runs. It queries the bucket for the scans in
+the window that are missing and processes those, newest first: GitHub cron
+triggers run late and sometimes not at all, and the next backfill covers
+whatever a missed run skipped. Scans younger than three minutes are skipped,
+since an AHI timeline's directory appears before every strip is in it.
+`backfill` prunes when it finishes; `--no-prune` skips that step, and the
+standalone `prune` subcommand runs it separately.
 
 ## Workflows
 
-| Workflow | Trigger | What it does |
+| Workflow | Trigger | Steps |
 |---|---|---|
 | `ci` | push, PR | ruff, pytest, region table parses |
 | `process` | every 30 min, manual | backfill each region, then prune it, one job per region |
@@ -170,14 +172,14 @@ subcommand does it on its own.
 
 `process` builds its matrix from `regions.toml`, so a new region needs no
 workflow edit. Each region's job takes a concurrency group of its own, with
-`cancel-in-progress: false`, so overlapping runs queue rather than fight over
-that region's manifests.
+`cancel-in-progress: false`, so overlapping runs queue instead of writing
+that region's manifests concurrently.
 
 Secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for
 everything that publishes; `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` only
 in the `earthdata` environment that `bootstrap-ancillary` runs in.
 
-## Costs, roughly
+## Resource use
 
 Measured on one scan of each region, on a laptop:
 
@@ -190,18 +192,18 @@ Measured on one scan of each region, on a laptop:
 | Published per scan | ~11 MB | ~23 MB |
 | of which `debra.nc` | 7 MB | 20 MB |
 
-So a run is dominated by fetching, not by DEBRA, and fits a 4-vCPU / 16 GB
-runner with room to spare. At 48 scans a day across both regions that is about
-1.7 GB a day of new objects, against a 2 GB bucket — which is what the
-retention above exists to reconcile, and why the netCDF is the first thing to
-go. Steady state is near 1.5 GB, so R2 storage stays inside a dollar a month
-and the writes (six per scan, ~17k a month) stay inside the free tier.
+Fetching accounts for most of the wall time, and peak RSS stays within the
+16 GB of a 4-vCPU runner. At 48 scans a day across both regions that is about
+1.7 GB a day of new objects, against a 2 GB bucket, which is what the
+retention above reconciles and why `debra.nc` has the shortest retention.
+Steady state is near 1.5 GB, so R2 storage stays under one dollar a month and
+the writes (six per scan, ~17k a month) stay within the free tier.
 
-## Not here yet
+## Not implemented
 
 - The composite background (a rolling 14-day cloud-cleared TIR store), which
-  carries the split-window water-vapour depression the semianalytic
-  background does not.
-- A reanalysis pass that reprocesses older scans with real MERRA-2 TS, to put
-  a number on the GFS substitution.
-- Any frontend. The layout above is meant to make one easy.
+  includes the split-window water-vapour depression that the semianalytic
+  background omits.
+- A reanalysis pass that reprocesses older scans with MERRA-2 TS, to quantify
+  the GFS substitution.
+- Any frontend. The layout above is intended to support one.

@@ -1,10 +1,21 @@
 name: bootstrap-ancillary
 
 # Stages a region-month of CAMEL emissivity into the private R2 ancillary
-# prefix. Manual on purpose: it is the only job that holds Earthdata
-# credentials, and a month only ever needs staging once.
+# prefix. It is the only job that holds Earthdata credentials, so the
+# operational path never touches them.
+#
+# A month needs staging once, but it needs it *before* the first scan of that
+# month arrives: the processor looks up the scan's own month and fails hard on
+# a missing key, so an unstaged rollover breaks every region at 00:00 on the
+# first. The schedule below stages the upcoming month with days to spare, and
+# the dispatch inputs remain for restaging a bad subset or filling a gap.
 
 on:
+  schedule:
+    # 25th of each month, staging the month that starts next week. Retention
+    # keeps the newest two CAMEL months per region, so staging ahead evicts
+    # the month before last rather than one still in use.
+    - cron: "0 3 25 * *"
   workflow_dispatch:
     inputs:
       region:
@@ -50,6 +61,12 @@ jobs:
           ONLY: ${{ inputs.region }}
           MONTH: ${{ inputs.month }}
         run: |
+          # The scheduled run is the one that has to look forward; a dispatch
+          # with a blank month keeps meaning "the current one".
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            MONTH=$(python3 -c 'import datetime as dt; print(f"{dt.datetime.now(dt.UTC).date().replace(day=28) + dt.timedelta(days=7):%Y-%m}")')
+            echo "scheduled run: staging $MONTH"
+          fi
           keys=$(python3 -c "import tomllib;print(' '.join(sorted(tomllib.load(open('regions.toml','rb')))))")
           if [ -n "$ONLY" ]; then keys="$ONLY"; fi
           for key in $keys; do
