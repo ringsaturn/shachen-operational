@@ -715,6 +715,9 @@ a:hover {
   font-size: 0.78rem;
   line-height: 1.55;
   color: var(--muted);
+  /* A DOI is one long unbreakable token and will push past a phone-width
+     column unless it is allowed to break anywhere. */
+  overflow-wrap: anywhere;
 }
 
 .credit code {

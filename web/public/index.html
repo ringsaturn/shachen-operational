@@ -128,31 +128,38 @@
           <div class="credit">
             <dt>Observations</dt>
             <dd>
-              GOES-19 ABI L1b radiances, NOAA —
-              <a href="https://registry.opendata.aws/noaa-goes/">NODD on AWS Open Data</a>. A work
-              of the US government, in the public domain.
+              GOES-19 ABI L1b radiances, NOAA, through
+              <a href="https://registry.opendata.aws/noaa-goes/">NODD on AWS Open Data</a> — open to
+              the public and usable as desired.
             </dd>
             <dd>
-              Himawari-9 AHI L1b radiances,
+              Himawari-9 AHI L1b radiances, produced and managed by the
               <a href="https://www.jma.go.jp/jma/jma-eng/satellite/index.html"
                 >Japan Meteorological Agency</a
-              >, redistributed by
-              <a href="https://registry.opendata.aws/noaa-himawari/">NOAA on AWS Open Data</a> under
-              JMA's terms for Himawari data.
+              >, distributed freely and openly by NOAA through
+              <a href="https://registry.opendata.aws/noaa-himawari/">NODD on AWS Open Data</a>,
+              which is the route this pipeline reads. JMA's own
+              <a href="https://www.eorc.jaxa.jp/ptree/terms.html">P-Tree</a> channel carries a
+              research-and-education-only condition; it is not used here.
             </dd>
           </div>
 
           <div class="credit">
             <dt>Ancillary fields</dt>
             <dd>
-              Skin temperature: GFS 0.25° <code>TMP:surface</code>, NOAA —
+              Skin temperature: GFS 0.25° <code>TMP:surface</code>, NOAA, through
               <a href="https://registry.opendata.aws/noaa-gfs-bdp-pds/">NODD on AWS Open Data</a>.
             </dd>
             <dd>
-              Emissivity: CAMEL <code>CAM5K30EM</code> V003, a monthly climatology from
-              <a href="https://www.earthdata.nasa.gov/data/catalog/lpcloud-cam5k30em-003"
-                >NASA LP DAAC</a
-              >, courtesy of NASA Earthdata.
+              Emissivity: Borbas, E., Hook, S., Hulley, G., Loveless, M., and Knuteson, R. (2023),
+              <em>Combined ASTER and MODIS Emissivity database over Land (CAMEL) Emissivity Monthly
+              Global 0.05Deg V003</em>, NASA Land Processes DAAC,
+              <a href="https://doi.org/10.5067/MEaSUREs/LSTE/CAM5K30EM.003"
+                >doi:10.5067/MEaSUREs/LSTE/CAM5K30EM.003</a
+              >. Openly shared under NASA's
+              <a href="https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance"
+                >EOSDIS data use guidance</a
+              >.
             </dd>
           </div>
 
@@ -177,9 +184,9 @@
             <dd>
               Coastlines and boundaries from
               <a href="https://www.naturalearthdata.com/about/terms-of-use/">Natural Earth</a>,
-              public domain, drawn with
-              <a href="https://scitools.org.uk/cartopy/">cartopy</a>. Boundaries carry no political
-              endorsement.
+              which is in the public domain, drawn with
+              <a href="https://scitools.org.uk/cartopy/">cartopy</a>. Boundaries are cartographic,
+              not a statement of any position on them.
             </dd>
           </div>
 
@@ -195,9 +202,12 @@
         </dl>
 
         <p class="credits-note">
-          The composites and fields published here are derived products of this pipeline, not the
-          source data. Reuse them freely with credit to the providers above; the observations
-          themselves remain under their providers' own terms.
+          NOAA data disseminated through NODD are open to the public, and NOAA and JMA request
+          attribution for the data itself. What is published here is modified data — a derived
+          product of this pipeline, not original or unaltered NOAA, JMA or NASA data, and no
+          endorsement by or affiliation with any provider above is implied. Reuse these composites
+          and fields freely with credit to the sources; the observations themselves stay under
+          their own providers' terms.
         </p>
       </section>
 
