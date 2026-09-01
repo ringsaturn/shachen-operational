@@ -1,0 +1,22 @@
+{
+  // Cloudflare Pages project for the shachen-operational viewer.
+  //
+  // The bucket is private and shared, so the site never talks to R2 from the
+  // browser: functions/r2/[[path]].js is the only reader, and it can only
+  // reach keys under the pipeline's own published prefix.
+  //
+  //   wrangler pages dev                 local, against a local R2 emulation
+  //   wrangler pages deploy              production
+  "name": "shachen-web",
+  "pages_build_output_dir": "public",
+  "compatibility_date": "2026-07-01",
+
+  // Same bucket the pipeline publishes to; R2_BUCKET defaults to "shachen".
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "shachen",
+      "preview_bucket_name": "shachen"
+    }
+  ]
+}

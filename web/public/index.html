@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" data-state="loading">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>shachen · operational DEBRA-Dust</title>
+    <meta
+      name="description"
+      content="Live DEBRA-Dust detections from GOES ABI and Himawari AHI, published every half hour."
+    />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0b0b'/%3E%3Cpath d='M4 21c6-9 12 3 18-6' stroke='%23d9a441' stroke-width='3' fill='none'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="rail">
+      <a class="mark" href="/">
+        <span class="mark-name">shachen</span>
+        <span class="mark-sub">DEBRA-Dust, operational</span>
+      </a>
+
+      <nav class="regions" id="regions" aria-label="Region">
+        <span class="regions-empty">Reading the bucket…</span>
+      </nav>
+
+      <p class="freshness" id="freshness"></p>
+    </header>
+
+    <main class="stage">
+      <section class="viewer" aria-label="Scan imagery">
+        <div class="frame" id="frame">
+          <img class="layer layer-base" id="layerBase" alt="" />
+          <div class="layer layer-wipe" id="layerWipe">
+            <img class="layer-image" id="layerTop" alt="" />
+          </div>
+
+          <div class="tags" id="tags" hidden>
+            <span class="tag tag-left">DEBRA</span>
+            <span class="tag tag-right">Dust RGB</span>
+          </div>
+
+          <div
+            class="handle"
+            id="handle"
+            hidden
+            role="slider"
+            tabindex="0"
+            aria-label="Wipe between DEBRA and Dust RGB"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="50"
+            aria-valuetext="Half DEBRA, half Dust RGB"
+          >
+            <span class="handle-grip" aria-hidden="true"></span>
+          </div>
+
+          <p class="frame-note" id="frameNote" role="status"></p>
+        </div>
+
+        <div class="controls">
+          <div class="transport">
+            <button class="button button-icon" id="stepBack" type="button" aria-label="Previous scan">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3 5.5 8 11 13z" /><rect x="4" y="3" width="1.4" height="10" /></svg>
+            </button>
+            <button class="button button-play" id="play" type="button" aria-pressed="false">
+              <svg class="glyph-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3l9 5-9 5z" /></svg>
+              <svg class="glyph-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" /><rect x="9.5" y="3" width="3" height="10" /></svg>
+              <span id="playLabel">Play</span>
+            </button>
+            <button class="button button-icon" id="stepForward" type="button" aria-label="Next scan">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3l5.5 5L5 13z" /><rect x="10.6" y="3" width="1.4" height="10" /></svg>
+            </button>
+            <button class="button" id="latest" type="button">Jump to newest</button>
+          </div>
+
+          <div class="layers" role="group" aria-label="Layer">
+            <button class="button button-layer is-on" id="modeDebra" type="button" aria-pressed="true">DEBRA</button>
+            <button class="button button-layer" id="modeRgb" type="button" aria-pressed="false">Dust RGB</button>
+            <button class="button button-layer" id="modeCompare" type="button" aria-pressed="false">Compare</button>
+          </div>
+        </div>
+
+        <div class="tape-wrap">
+          <div
+            class="tape"
+            id="tape"
+            role="slider"
+            tabindex="0"
+            aria-label="Retained scans"
+            aria-valuemin="0"
+            aria-valuemax="0"
+            aria-valuenow="0"
+          >
+            <span class="tape-baseline" aria-hidden="true"></span>
+            <span class="tape-cursor" id="tapeCursor" aria-hidden="true"></span>
+          </div>
+          <div class="tape-axis" id="tapeAxis" aria-hidden="true"></div>
+          <p class="tape-legend">
+            <span class="key key-scan"></span> a published scan
+            <span class="key key-ready"></span> loaded here
+            <span class="key key-now"></span> on screen
+            <span class="tape-count" id="tapeCount"></span>
+          </p>
+        </div>
+      </section>
+
+      <aside class="manifest" id="manifest" aria-label="Scan manifest"></aside>
+    </main>
+
+    <footer class="foot">
+      <p>
+        Dust is coloured by detection confidence over an unmodified background; the Dust RGB is the
+        EUMETSAT recipe over the same scene, for comparison. Imagery is produced unattended from
+        NOAA's open GOES and Himawari archives and published to R2.
+      </p>
+      <p class="foot-links">
+        <a href="https://github.com/ringsaturn/shachen-operational">shachen-operational</a>
+        <a href="https://github.com/ringsaturn/shachen">shachen</a>
+        <span id="footRetention"></span>
+      </p>
+    </footer>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

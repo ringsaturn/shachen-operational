@@ -1,0 +1,30 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      # A Pages deploy is a whole-site replacement; two at once would race.
+      group: web-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web
+          # There is no build step: public/ is the site and functions/ is
+          # picked up beside it, both read from wrangler.jsonc.
+          command: pages deploy

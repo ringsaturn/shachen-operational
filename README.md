@@ -169,6 +169,7 @@ standalone `prune` subcommand runs it separately.
 | `ci` | push, PR | ruff, pytest, region table parses |
 | `process` | every 30 min, manual | backfill each region, then prune it, one job per region |
 | `bootstrap-ancillary` | manual | stage a region-month of CAMEL into R2 |
+| `web` | push touching `web/`, manual | deploy the viewer to Cloudflare Pages |
 
 `process` builds its matrix from `regions.toml`, so a new region needs no
 workflow edit. Each region's job takes a concurrency group of its own, with
@@ -177,7 +178,49 @@ that region's manifests concurrently.
 
 Secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for
 everything that publishes; `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` only
-in the `earthdata` environment that `bootstrap-ancillary` runs in.
+in the `earthdata` environment that `bootstrap-ancillary` runs in;
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for the Pages deploy.
+
+## Viewer
+
+`web/` is a Cloudflare Pages site that reads the layout above and nothing
+else. It shows the newest scan of a region, steps or animates back through
+every retained scan, and wipes between the DEBRA composite and the Dust RGB
+over the same scene. Each scan's `meta.json` is shown beside it, so what is on
+screen stays attached to the GFS cycle and CAMEL month it was computed from.
+
+```
+web/wrangler.jsonc              Pages project; binds the R2 bucket as BUCKET
+web/public/                     the site — no build step, no dependencies
+web/functions/api/regions.js    GET /api/regions, a delimited list of the layout root
+web/functions/r2/[[path]].js    GET /r2/{region}/...  streams one published object
+```
+
+The bucket stays private. The browser never holds a credential and never
+talks to R2: `functions/r2/[[path]].js` is the only reader, and it builds its
+key rather than accepting one, so nothing outside `shachen-ops/v1` and no
+extension the pipeline does not publish is reachable. Objects keep the
+`Content-Type` and `Cache-Control` they were uploaded with, which is what puts
+the pipeline's own cache tiers in front of the browser; immutable bodies are
+also kept in the edge cache, so the second viewer of a scan does not pull it
+out of R2 again.
+
+Adding a region needs no change here either. The region picker comes from a
+delimited list of `shachen-ops/v1/`, and the timeline from the month indexes,
+which retention rewrites — so what the tape draws still exists. Imagery is one
+to three megabytes a frame, so nothing is fetched until it is about to be
+shown: the player waits for the next frame to decode before advancing, and the
+tape marks which frames are already in hand.
+
+```sh
+cd web
+wrangler pages dev        # against a local R2; seed it with wrangler r2 object put --local
+wrangler pages deploy     # or push to main and let the web workflow do it
+```
+
+The Pages project needs the `BUCKET` binding to point at the same bucket the
+pipeline writes to (`shachen` unless `R2_BUCKET` says otherwise), which
+`wrangler.jsonc` declares and the first deploy creates.
 
 ## Resource use
 
