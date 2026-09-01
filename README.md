@@ -219,9 +219,10 @@ wrangler pages dev        # against a local R2; seed it with wrangler r2 object 
 wrangler pages deploy     # or push to main and let the web workflow do it
 ```
 
-The Pages project needs the `BUCKET` binding to point at the same bucket the
-pipeline writes to (`shachen` unless `R2_BUCKET` says otherwise), which
-`wrangler.jsonc` declares and the first deploy creates.
+`BUCKET` in `wrangler.jsonc` has to name the same bucket the pipeline writes
+to — the `R2_BUCKET` repository variable, not the `shachen` default in
+`shachen_ops` — or the deploy fails with `R2 bucket not found`. The Pages
+project itself is created by the first deploy.
 
 ## Resource use
 

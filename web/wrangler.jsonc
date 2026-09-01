@@ -11,12 +11,14 @@
   "pages_build_output_dir": "public",
   "compatibility_date": "2026-07-01",
 
-  // Same bucket the pipeline publishes to; R2_BUCKET defaults to "shachen".
+  // The bucket the pipeline publishes to. It has to match the R2_BUCKET
+  // repository variable the process workflow runs with — the default in
+  // shachen_ops is "shachen", but this account publishes into "dataset".
   "r2_buckets": [
     {
       "binding": "BUCKET",
-      "bucket_name": "shachen",
-      "preview_bucket_name": "shachen"
+      "bucket_name": "dataset",
+      "preview_bucket_name": "dataset"
     }
   ]
 }
