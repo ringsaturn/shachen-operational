@@ -188,7 +188,10 @@ in the `earthdata` environment that `bootstrap-ancillary` runs in;
 else. It shows the newest scan of a region, steps or animates back through
 every retained scan, and wipes between the DEBRA composite and the Dust RGB
 over the same scene. Each scan's `meta.json` is shown beside it, so what is on
-screen stays attached to the GFS cycle and CAMEL month it was computed from.
+screen stays attached to the GFS cycle and CAMEL month it was computed from,
+and the footer credits every source the imagery is derived from — the two
+sensors, the two ancillary datasets, both published algorithms, and the
+basemap — since a derived product that names none of them is unciteable.
 
 ```
 web/wrangler.jsonc              Pages project; binds the R2 bucket as BUCKET

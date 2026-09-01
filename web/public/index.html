@@ -114,11 +114,93 @@
     </main>
 
     <footer class="foot">
-      <p>
+      <p class="foot-lede">
         Dust is coloured by detection confidence over an unmodified background; the Dust RGB is the
-        EUMETSAT recipe over the same scene, for comparison. Imagery is produced unattended from
-        NOAA's open GOES and Himawari archives and published to R2.
+        same scene under the classic recipe, for comparison. Every scan here was produced
+        unattended, from open archives, and nothing on this page is an official product of the
+        agencies below.
       </p>
+
+      <section class="credits" aria-labelledby="creditsHeading">
+        <h2 class="credits-heading" id="creditsHeading">Where this comes from</h2>
+
+        <dl class="credits-list">
+          <div class="credit">
+            <dt>Observations</dt>
+            <dd>
+              GOES-19 ABI L1b radiances, NOAA —
+              <a href="https://registry.opendata.aws/noaa-goes/">NODD on AWS Open Data</a>. A work
+              of the US government, in the public domain.
+            </dd>
+            <dd>
+              Himawari-9 AHI L1b radiances,
+              <a href="https://www.jma.go.jp/jma/jma-eng/satellite/index.html"
+                >Japan Meteorological Agency</a
+              >, redistributed by
+              <a href="https://registry.opendata.aws/noaa-himawari/">NOAA on AWS Open Data</a> under
+              JMA's terms for Himawari data.
+            </dd>
+          </div>
+
+          <div class="credit">
+            <dt>Ancillary fields</dt>
+            <dd>
+              Skin temperature: GFS 0.25° <code>TMP:surface</code>, NOAA —
+              <a href="https://registry.opendata.aws/noaa-gfs-bdp-pds/">NODD on AWS Open Data</a>.
+            </dd>
+            <dd>
+              Emissivity: CAMEL <code>CAM5K30EM</code> V003, a monthly climatology from
+              <a href="https://www.earthdata.nasa.gov/data/catalog/lpcloud-cam5k30em-003"
+                >NASA LP DAAC</a
+              >, courtesy of NASA Earthdata.
+            </dd>
+          </div>
+
+          <div class="credit">
+            <dt>Algorithms</dt>
+            <dd>
+              DEBRA, the Dynamic Enhancement with Background Reduction Algorithm — Miller, S. D.,
+              Bankert, R. L., Solbrig, J. E., Forsythe, J. M., Noh, Y.-J., and Grasso, L. (2017),
+              <em>J. Geophys. Res. Atmos.</em> 122,
+              <a href="https://doi.org/10.1002/2017JD027365">doi:10.1002/2017JD027365</a>.
+            </dd>
+            <dd>
+              Dust RGB — Lensky, I. M., and Rosenfeld, D. (2008),
+              <em>Atmos. Chem. Phys.</em> 8, 6739–6753,
+              <a href="https://doi.org/10.5194/acp-8-6739-2008">doi:10.5194/acp-8-6739-2008</a>, in
+              the EUMETSAT band combination.
+            </dd>
+          </div>
+
+          <div class="credit">
+            <dt>Basemap</dt>
+            <dd>
+              Coastlines and boundaries from
+              <a href="https://www.naturalearthdata.com/about/terms-of-use/">Natural Earth</a>,
+              public domain, drawn with
+              <a href="https://scitools.org.uk/cartopy/">cartopy</a>. Boundaries carry no political
+              endorsement.
+            </dd>
+          </div>
+
+          <div class="credit">
+            <dt>Software</dt>
+            <dd>
+              <a href="https://github.com/ringsaturn/shachen">shachen</a>, an open implementation of
+              DEBRA, run by
+              <a href="https://github.com/ringsaturn/shachen-operational">shachen-operational</a>.
+              Both Apache-2.0.
+            </dd>
+          </div>
+        </dl>
+
+        <p class="credits-note">
+          The composites and fields published here are derived products of this pipeline, not the
+          source data. Reuse them freely with credit to the providers above; the observations
+          themselves remain under their providers' own terms.
+        </p>
+      </section>
+
       <p class="foot-links">
         <a href="https://github.com/ringsaturn/shachen-operational">shachen-operational</a>
         <a href="https://github.com/ringsaturn/shachen">shachen</a>

@@ -656,7 +656,9 @@ a:hover {
   border-top: 1px solid var(--rule);
   background: var(--panel);
   padding: 1rem var(--gap) 1.4rem;
-  color: var(--dim);
+  /* Attribution is prose to be read, not chrome: --dim lands near 3:1 on the
+     panel, which is under AA for text this size. */
+  color: var(--muted);
   font-size: 0.8rem;
   display: grid;
   gap: 0.5rem;
@@ -665,6 +667,81 @@ a:hover {
 .foot p {
   margin: 0;
   max-width: 68ch;
+}
+
+/* Attribution: who made the observations this page is derived from. Set as a
+   term-and-sources list rather than prose, so a reader chasing one source
+   finds it without reading the rest. */
+
+.credits {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+
+.credits-heading {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.credits-list {
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.credit {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.credit dt {
+  font-size: 0.62rem;
+  font-variation-settings: "wght" 550;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.credit dd {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.credit code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--text);
+}
+
+.credits-note {
+  font-size: 0.78rem;
+}
+
+@media (min-width: 720px) {
+  .credit {
+    grid-template-columns: 11rem minmax(0, 1fr);
+    column-gap: 1.4rem;
+  }
+
+  .credit dt {
+    grid-column: 1;
+    text-align: end;
+    padding-top: 0.1rem;
+  }
+
+  .credit dd {
+    grid-column: 2;
+  }
 }
 
 .foot-links {
