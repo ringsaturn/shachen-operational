@@ -1,30 +1,52 @@
 /*
  * Colours are sampled from the imagery itself: the plate black the composites
- * letterbox to, the #d62728 of their political boundaries, the #174e74 of
- * their graticule, and the yellow DEBRA paints dust with. The page is the
- * margin of the plate, so it stays out of the way of the picture.
+ * letterbox to, the yellow DEBRA paints dust with, and the red of the
+ * political boundaries it draws over them. The page is the margin of the
+ * plate, so it stays out of the way of the picture.
+ *
+ * Both schemes live in one set of tokens. light-dark() resolves against the
+ * root's color-scheme, so the system preference is the default and the theme
+ * button only has to override color-scheme — there is no second palette to
+ * keep in step with the first.
  */
 
 :root {
-  --plate: #0b0b0b;
-  --panel: #121316;
-  --panel-high: #17191d;
-  --rule: #23252a;
-  --rule-bright: #33363d;
-  --text: #e8e9ec;
-  --muted: #8b909a;
-  --dim: #61666f;
-  --dust: #d9a441;
-  --dust-dim: #6d5527;
-  --boundary: #d62728;
-  --graticule: #4d8ec4;
+  color-scheme: light dark;
 
-  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --bg: light-dark(#f3f5f8, #0f1114);
+  --panel: light-dark(#ffffff, #161a1f);
+  --panel-sunk: light-dark(#e9edf2, #1c2127);
+  --rule: light-dark(#dde2e9, #262c34);
+  --rule-bright: light-dark(#c4ccd6, #353d47);
+  --text: light-dark(#14181d, #ecedef);
+  --muted: light-dark(#59626e, #9a9ea8);
+  --dim: light-dark(#8792a0, #6b7078);
+  --dust: light-dark(#b8811c, #e0aa45);
+  --dust-ink: light-dark(#ffffff, #151005);
+  --dust-soft: light-dark(rgba(184, 129, 28, 0.14), rgba(224, 170, 69, 0.16));
+  --warn: light-dark(#c62828, #e04a4a);
+  --link: light-dark(#1f6fa8, #6da8d8);
+
+  /* The composites letterbox to this. The frame keeps it in both schemes: a
+     white surround on a black plate is a border, not a background. */
+  --plate: #0b0b0b;
+  --over: rgba(11, 11, 11, 0.7);
+
+  --display: "Geist", "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --gap: clamp(0.75rem, 2vw, 1.5rem);
+  --gap: clamp(14px, 3vw, 32px);
+  --column: 1200px;
   --plate-ratio: 1.5;
   --wipe: 50%;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 * {
@@ -39,9 +61,9 @@ body {
 
 body {
   min-height: 100dvh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  background: var(--plate);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
   color: var(--text);
   font-family: var(--display);
   font-size: 15px;
@@ -50,8 +72,8 @@ body {
 }
 
 a {
-  color: var(--graticule);
-  text-decoration-color: color-mix(in srgb, var(--graticule) 40%, transparent);
+  color: var(--link);
+  text-decoration-color: color-mix(in srgb, var(--link) 35%, transparent);
   text-underline-offset: 3px;
 }
 
@@ -59,173 +81,228 @@ a:hover {
   color: var(--text);
 }
 
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
 :focus-visible {
   outline: 2px solid var(--dust);
   outline-offset: 2px;
 }
 
+/* A segmented control: regions in the header, layers under the frame. One
+   pressed at a time, and the pressed one carries the dust. */
+
+.segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--panel-sunk);
+}
+
+.segment button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.segment button:hover {
+  color: var(--text);
+}
+
+.segment button[aria-pressed="true"] {
+  background: var(--dust);
+  color: var(--dust-ink);
+}
+
 /* ---------------------------------------------------------------- header */
 
+/* The bands and their rules span the window; what is in them sits in one
+   column with the stage, so the mark, the plate and the attribution all start
+   at the same x. Prose beginning at the window's edge under a plate floating
+   in the middle of the page is the imbalance this avoids. */
+
 .rail {
+  padding: 14px var(--gap);
+  border-bottom: 1px solid var(--rule);
+}
+
+.rail-inner,
+.foot-inner {
+  width: 100%;
+  max-width: calc(var(--column) - 2 * var(--gap));
+  margin-inline: auto;
+}
+
+.rail-inner {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--gap);
-  padding: 0.9rem var(--gap);
-  border-bottom: 1px solid var(--rule);
-  background: var(--panel);
+  align-items: center;
+  gap: 12px 20px;
 }
 
 .mark {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: 10px;
   text-decoration: none;
   color: inherit;
 }
 
 .mark-name {
-  font-size: 1.15rem;
-  font-variation-settings: "wdth" 118, "wght" 620;
-  letter-spacing: 0.04em;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .mark-sub {
   font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.13em;
+  font-size: 11px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--dim);
 }
 
-.regions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
 .regions-empty {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   color: var(--dim);
+  padding: 6px 4px;
 }
 
 .region {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.32rem 0.7rem;
-  border: 1px solid var(--rule-bright);
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
+  align-items: flex-start;
+  padding: 6px 12px;
+  line-height: 1.2;
   text-align: start;
-  cursor: pointer;
-}
-
-.region:hover {
-  color: var(--text);
-  border-color: var(--dim);
-}
-
-.region[aria-pressed="true"] {
-  color: var(--plate);
-  background: var(--dust);
-  border-color: var(--dust);
 }
 
 .region-key {
-  font-variation-settings: "wght" 600;
-  letter-spacing: 0.05em;
-  font-size: 0.86rem;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .region-where {
   font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.8;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.rail-end {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .freshness {
   margin: 0;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--dim);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  width: 100%;
-  order: 3;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
-.freshness::before {
-  content: "";
-  width: 6px;
-  height: 6px;
+.freshness-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--dim);
 }
 
-.freshness[data-state="current"]::before {
+/* The pulse says the page is watching, not that anything just happened; it
+   stops when the cadence has been missed, where a steady red is the point. */
+.freshness[data-state="current"] .freshness-dot {
   background: var(--dust);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dust) 22%, transparent);
+  animation: pulse 2.4s ease-in-out infinite;
 }
 
-.freshness[data-state="late"]::before {
-  background: var(--boundary);
+.freshness[data-state="late"] .freshness-dot {
+  background: var(--warn);
 }
 
-@media (min-width: 900px) {
-  .freshness {
-    width: auto;
-    order: 0;
-    margin-inline-start: 0;
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--dust-soft);
   }
+  50% {
+    box-shadow: 0 0 0 5px var(--dust-soft);
+  }
+}
 
-  .regions {
-    margin-inline-start: auto;
-    order: 2;
-  }
+.theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.theme:hover {
+  color: var(--text);
+  border-color: var(--rule-bright);
+}
+
+.theme svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ----------------------------------------------------------------- stage */
 
 .stage {
-  display: grid;
-  gap: var(--gap);
+  flex: 1;
+  width: 100%;
+  max-width: var(--column);
+  margin-inline: auto;
   padding: var(--gap);
-  align-content: start;
-}
-
-@media (min-width: 1080px) {
-  .stage {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: start;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .viewer {
-  display: grid;
-  gap: 0.75rem;
   min-width: 0;
 }
 
 .frame {
   position: relative;
-  /* Height is budgeted first — the controls and the tape have to stay on
-     screen — and the width follows the plate's own ratio from there, so the
-     image fills the frame exactly and the wipe maps to real pixels. */
+  /* Full width of the column, with the height following the plate's own
+     ratio — the image fills the frame exactly, so the wipe maps to real
+     pixels and the plate lines up with the controls under it. */
   aspect-ratio: var(--plate-ratio);
-  width: min(100%, calc((100dvh - 17rem) * var(--plate-ratio)));
-  margin-inline: auto;
+  width: 100%;
   border: 1px solid var(--rule);
+  border-radius: 14px;
   background: var(--plate);
   overflow: hidden;
   touch-action: pan-y;
+  user-select: none;
+}
+
+.frame[data-mode="compare"] {
+  cursor: ew-resize;
 }
 
 .layer {
@@ -264,35 +341,70 @@ a:hover {
   opacity: 0;
 }
 
-.tags[hidden] {
+/* What is on screen, over the picture: the scan's own time and the region it
+   is of, so a screenshot of the frame carries them. */
+
+.chips {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--over);
+  color: #ecedef;
+}
+
+.chip:empty {
+  display: none;
+}
+
+.chip-region {
+  color: #9a9ea8;
+}
+
+.tags[hidden],
+.handle[hidden] {
   display: none;
 }
 
 .tags {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem;
   pointer-events: none;
 }
 
 .tag {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 0.15rem 0.4rem;
-  background: color-mix(in srgb, var(--plate) 72%, transparent);
-  color: var(--text);
-  border: 1px solid var(--rule-bright);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--over);
+  color: #ecedef;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .tag-left {
-  border-color: var(--dust-dim);
-  color: var(--dust);
+  color: #e0aa45;
+  border-color: rgba(224, 170, 69, 0.4);
 }
+
+/* The divider is still a slider: dragging it is the obvious gesture, but the
+   wipe has to be reachable from the keyboard too. */
 
 .handle {
   position: absolute;
@@ -301,7 +413,8 @@ a:hover {
   left: var(--wipe);
   width: 2px;
   margin-inline-start: -1px;
-  background: color-mix(in srgb, var(--dust) 80%, white);
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
   cursor: ew-resize;
 }
 
@@ -310,33 +423,21 @@ a:hover {
   top: 50%;
   left: 50%;
   translate: -50% -50%;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--dust) 80%, white);
-  background: color-mix(in srgb, var(--plate) 55%, transparent);
-  backdrop-filter: blur(2px);
+  border: 2px solid #fff;
+  background: rgba(11, 11, 11, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.handle-grip::before,
-.handle-grip::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 0;
-  height: 0;
-  border-block: 4px solid transparent;
-  translate: 0 -50%;
-}
-
-.handle-grip::before {
-  left: 7px;
-  border-inline-end: 5px solid var(--text);
-}
-
-.handle-grip::after {
-  right: 7px;
-  border-inline-start: 5px solid var(--text);
+.handle-grip svg {
+  width: 16px;
+  height: 16px;
+  fill: #fff;
 }
 
 .frame-note {
@@ -345,12 +446,12 @@ a:hover {
   top: 50%;
   translate: 0 -50%;
   margin: 0;
+  padding: 0 1rem;
   text-align: center;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 12px;
   letter-spacing: 0.06em;
-  color: var(--muted);
-  padding: 0 1rem;
+  color: #9a9ea8;
 }
 
 .frame-note:empty {
@@ -362,67 +463,64 @@ a:hover {
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 10px;
   justify-content: space-between;
   align-items: center;
 }
 
-.transport,
-.layers {
+.transport {
   display: flex;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 6px;
 }
 
 .button {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.7rem;
-  border: 1px solid var(--rule-bright);
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
   background: var(--panel);
   color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  cursor: pointer;
+  font-size: 13px;
 }
 
 .button:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--dim);
-  background: var(--panel-high);
+  border-color: var(--rule-bright);
 }
 
 .button:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: default;
 }
 
 .button svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   fill: currentColor;
 }
 
 .button-icon {
-  padding-inline: 0.55rem;
+  width: 36px;
 }
 
-/* Beats .button:hover, which is otherwise more specific. */
-.button.button-layer[aria-pressed="true"] {
+.button-play {
+  padding: 0 14px 0 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.button-play[aria-pressed="true"] {
+  border-color: var(--dust);
+  background: var(--dust-soft);
   color: var(--dust);
-  border-color: var(--dust-dim);
-  background: color-mix(in srgb, var(--dust) 10%, var(--panel));
 }
 
 .button-play .glyph-pause {
   display: none;
-}
-
-.button.button-play[aria-pressed="true"] {
-  color: var(--dust);
-  border-color: var(--dust-dim);
 }
 
 .button-play[aria-pressed="true"] .glyph-play {
@@ -433,28 +531,35 @@ a:hover {
   display: inline-block;
 }
 
+.button-ghost {
+  padding: 0 12px;
+  background: transparent;
+}
+
+.layers button {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 /* ------------------------------------------------------------------ tape */
 
 .tape-wrap {
-  display: grid;
-  gap: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .tape {
   position: relative;
-  height: 46px;
+  height: 52px;
   border: 1px solid var(--rule);
-  border-bottom: none;
-  background: linear-gradient(var(--panel), color-mix(in srgb, var(--panel) 40%, var(--plate)));
+  border-radius: 10px;
+  background: var(--panel);
   cursor: crosshair;
-}
-
-.tape-baseline {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 1px;
-  background: var(--rule-bright);
+  touch-action: none;
+  overflow: hidden;
 }
 
 .tick {
@@ -462,8 +567,10 @@ a:hover {
   bottom: 0;
   width: 2px;
   height: 11px;
-  background: var(--rule-bright);
   translate: -50% 0;
+  background: var(--rule-bright);
+  border-radius: 1px 1px 0 0;
+  transition: height 0.15s;
 }
 
 .tick.is-ready {
@@ -478,21 +585,21 @@ a:hover {
 
 .tape-cursor {
   position: absolute;
-  top: 4px;
+  top: 6px;
   translate: -50% 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel);
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
+  font-size: 11px;
   color: var(--dust);
   white-space: nowrap;
   pointer-events: none;
-  padding-inline: 0.3rem;
-  background: color-mix(in srgb, var(--plate) 80%, transparent);
 }
 
 .tape-axis {
   position: relative;
-  height: 1.1rem;
+  height: 16px;
 }
 
 .axis-label {
@@ -500,54 +607,45 @@ a:hover {
   top: 0;
   translate: -50% 0;
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
   color: var(--dim);
   white-space: nowrap;
-}
-
-.axis-label::before {
-  content: "";
-  position: absolute;
-  top: -0.35rem;
-  left: 50%;
-  width: 1px;
-  height: 0.3rem;
-  background: var(--rule-bright);
 }
 
 .tape-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.9rem;
+  gap: 4px 16px;
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
   color: var(--dim);
+}
+
+.tape-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .key {
   display: inline-block;
   width: 2px;
   height: 10px;
-  margin-inline-end: 0.15rem;
-  vertical-align: -1px;
-}
-
-.key-scan {
   background: var(--rule-bright);
 }
 
 .key-ready {
-  background: var(--muted);
   height: 14px;
+  background: var(--muted);
 }
 
 .key-now {
-  background: var(--dust);
   height: 14px;
+  background: var(--dust);
 }
 
 .tape-count {
@@ -558,83 +656,132 @@ a:hover {
 
 .manifest {
   border: 1px solid var(--rule);
+  border-radius: 12px;
   background: var(--panel);
-  padding: 0.9rem 1rem 1.1rem;
-  min-width: 0;
+  overflow: hidden;
 }
 
+/* Collapsed, the head is the answer to "what am I looking at": the time, how
+   old it is, and the three fields that change from scan to scan. */
+
 .manifest-head {
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 0.7rem;
-  margin-bottom: 0.2rem;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
 }
 
 .manifest-when {
-  display: block;
   font-family: var(--mono);
-  font-size: 1.05rem;
+  font-size: 13px;
   color: var(--text);
-  word-break: break-all;
 }
 
 .manifest-age {
-  display: block;
   font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   color: var(--dust);
-  margin-top: 0.2rem;
+}
+
+.manifest-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.manifest-more {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.manifest-more svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s;
+}
+
+.manifest-head[aria-expanded="true"] .manifest-more svg {
+  transform: rotate(180deg);
+}
+
+.manifest-body[hidden] {
+  display: none;
+}
+
+.manifest-body {
+  border-top: 1px solid var(--rule);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px 20px;
 }
 
 .field {
-  padding: 0.55rem 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
-}
-
-.field:last-of-type {
-  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .field-label {
-  display: block;
-  font-size: 0.62rem;
-  font-variation-settings: "wght" 550;
-  letter-spacing: 0.16em;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--dim);
 }
 
-.field-value {
-  display: block;
+.field-value,
+.field-note {
+  margin: 0;
   font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text);
-  margin-top: 0.15rem;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.field-value small {
-  display: block;
+.field-value {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.field-note {
+  font-size: 11.5px;
   color: var(--muted);
-  font-size: 0.72rem;
 }
 
 .downloads {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
+  gap: 8px;
 }
 
 .download {
-  flex: 1 1 auto;
-  text-align: center;
-  padding: 0.4rem 0.5rem;
+  padding: 7px 12px;
   border: 1px solid var(--rule-bright);
+  border-radius: 8px;
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   text-decoration: none;
   color: var(--muted);
@@ -642,7 +789,7 @@ a:hover {
 
 .download:hover {
   color: var(--dust);
-  border-color: var(--dust-dim);
+  border-color: var(--dust);
 }
 
 .download[aria-disabled="true"] {
@@ -654,107 +801,102 @@ a:hover {
 
 .foot {
   border-top: 1px solid var(--rule);
-  background: var(--panel);
-  padding: 1rem var(--gap) 1.4rem;
-  /* Attribution is prose to be read, not chrome: --dim lands near 3:1 on the
-     panel, which is under AA for text this size. */
+  padding: 20px var(--gap) 28px;
+  /* Attribution is prose to be read, not chrome: --muted clears AA on the
+     page ground at this size where --dim would not. */
   color: var(--muted);
-  font-size: 0.8rem;
-  display: grid;
-  gap: 0.5rem;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.foot-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .foot p {
   margin: 0;
-  max-width: 68ch;
+  max-width: 78ch;
+  text-wrap: pretty;
 }
 
-/* Attribution: who made the observations this page is derived from. Set as a
-   term-and-sources list rather than prose, so a reader chasing one source
-   finds it without reading the rest. */
+/* Attribution set as a term-and-sources list rather than as prose: a reader
+   chasing one source should find it without reading the other four. */
 
-.credits {
-  display: grid;
-  gap: 0.6rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--rule);
-}
-
-.credits-heading {
+.sources {
   margin: 0;
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  font-weight: 400;
-  letter-spacing: 0.16em;
+  display: grid;
+  gap: 10px;
+}
+
+.source {
+  display: grid;
+  gap: 2px;
+}
+
+.source dt {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--dim);
 }
 
-.credits-list {
+.source dd {
   margin: 0;
-  display: grid;
-  gap: 0.7rem;
-}
-
-.credit {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.credit dt {
-  font-size: 0.62rem;
-  font-variation-settings: "wght" 550;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.credit dd {
-  margin: 0;
-  max-width: 72ch;
-  font-size: 0.78rem;
-  line-height: 1.55;
-  color: var(--muted);
+  max-width: 74ch;
+  font-size: 12.5px;
   /* A DOI is one long unbreakable token and will push past a phone-width
      column unless it is allowed to break anywhere. */
   overflow-wrap: anywhere;
 }
 
-.credit code {
+.source code {
   font-family: var(--mono);
   font-size: 0.92em;
   color: var(--text);
 }
 
-.credits-note {
-  font-size: 0.78rem;
-}
-
 @media (min-width: 720px) {
-  .credit {
-    grid-template-columns: 11rem minmax(0, 1fr);
-    column-gap: 1.4rem;
+  .source {
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    column-gap: 20px;
   }
 
-  .credit dt {
+  .source dt {
     grid-column: 1;
-    text-align: end;
-    padding-top: 0.1rem;
+    padding-top: 2px;
   }
 
-  .credit dd {
+  /* Two sources under one term stack in the second column; without this the
+     second would be auto-placed back under the label. */
+  .source dd {
     grid-column: 2;
   }
+}
+
+.foot-terms {
+  font-size: 12.5px;
 }
 
 .foot-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 16px;
+  margin-top: 4px;
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.foot-links a {
+  text-decoration: none;
+}
+
+.foot-links span {
+  color: var(--dim);
 }
 
 /* --------------------------------------------------------------- states */
@@ -765,12 +907,13 @@ html[data-state="failed"] .manifest {
 }
 
 .notice {
-  grid-column: 1 / -1;
-  border: 1px solid var(--boundary);
-  background: color-mix(in srgb, var(--boundary) 8%, var(--panel));
-  padding: 0.8rem 1rem;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+  padding: 12px 16px;
+  margin: 0;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 12.5px;
   color: var(--text);
 }
 

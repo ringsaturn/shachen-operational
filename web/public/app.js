@@ -16,14 +16,23 @@ const FRAME_MS = 550;
 const PRELOAD_AHEAD = 3;
 const REFRESH_MS = 60_000;
 
+/** system follows the OS; the other two are a reader overruling it. */
+const THEMES = { system: "light", light: "dark", dark: "system" };
+const THEME_KEY = "shachen-theme";
+
 const el = {
   html: document.documentElement,
   regions: document.getElementById("regions"),
   freshness: document.getElementById("freshness"),
+  freshnessText: document.getElementById("freshnessText"),
+  theme: document.getElementById("theme"),
+  themeLabel: document.getElementById("themeLabel"),
   frame: document.getElementById("frame"),
   layerBase: document.getElementById("layerBase"),
   layerTop: document.getElementById("layerTop"),
   layerWipe: document.getElementById("layerWipe"),
+  chipTime: document.getElementById("chipTime"),
+  chipRegion: document.getElementById("chipRegion"),
   tags: document.getElementById("tags"),
   handle: document.getElementById("handle"),
   frameNote: document.getElementById("frameNote"),
@@ -40,6 +49,14 @@ const el = {
   tapeAxis: document.getElementById("tapeAxis"),
   tapeCount: document.getElementById("tapeCount"),
   manifest: document.getElementById("manifest"),
+  manifestToggle: document.getElementById("manifestToggle"),
+  manifestBody: document.getElementById("manifestBody"),
+  manifestWhen: document.getElementById("manifestWhen"),
+  manifestAge: document.getElementById("manifestAge"),
+  manifestSummary: document.getElementById("manifestSummary"),
+  manifestMoreLabel: document.getElementById("manifestMoreLabel"),
+  manifestFields: document.getElementById("manifestFields"),
+  manifestDownloads: document.getElementById("manifestDownloads"),
   stage: document.querySelector(".stage"),
   footRetention: document.getElementById("footRetention"),
 };
@@ -53,6 +70,8 @@ const state = {
   mode: "debra",
   playing: false,
   wipe: 50,
+  theme: "system",
+  detailsOpen: true,
   facts: null,
   metaCache: new Map(),
   loaded: new Map(),
@@ -270,7 +289,49 @@ async function loadMeta(scan) {
   return meta;
 }
 
+// ----------------------------------------------------------------- theme
+
+/**
+ * Only an explicit choice is written to the root; "system" removes the
+ * attribute and hands the page back to prefers-color-scheme, which is what
+ * light-dark() in the stylesheet is reading.
+ */
+function applyTheme() {
+  if (state.theme === "system") delete el.html.dataset.theme;
+  else el.html.dataset.theme = state.theme;
+  el.themeLabel.textContent = state.theme;
+  el.theme.title = `Theme: ${state.theme}. Click to switch.`;
+  el.theme.setAttribute("aria-label", `Theme: ${state.theme}. Click to switch.`);
+}
+
+function readTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored && Object.hasOwn(THEMES, stored)) return stored;
+  } catch (error) {
+    /* Blocked storage is not an error here; the system preference stands. */
+  }
+  return "system";
+}
+
+function cycleTheme() {
+  state.theme = THEMES[state.theme];
+  try {
+    localStorage.setItem(THEME_KEY, state.theme);
+  } catch (error) {
+    /* The choice then lasts for this page view only. */
+  }
+  applyTheme();
+}
+
 // -------------------------------------------------------------- rendering
+
+/** "GOES-19 · ABI" — the product code carries the sensor the key does not. */
+function regionSubtitle(region) {
+  const sensor = (region.product || "").split("-")[0];
+  if (region.satellite && sensor) return `${region.satellite} · ${sensor}`;
+  return region.satellite || region.description || "";
+}
 
 function renderRegions() {
   el.regions.innerHTML = "";
@@ -281,7 +342,7 @@ function renderRegions() {
     button.setAttribute("aria-pressed", String(region.key === state.region));
     button.innerHTML = `<span class="region-key"></span><span class="region-where"></span>`;
     button.querySelector(".region-key").textContent = region.key;
-    button.querySelector(".region-where").textContent = region.satellite || region.description;
+    button.querySelector(".region-where").textContent = regionSubtitle(region);
     button.title = region.description;
     button.addEventListener("click", () => {
       if (region.key !== state.region) loadRegion(region.key);
@@ -297,9 +358,9 @@ function renderFreshness() {
   const minutes = (Date.now() - scan.at.getTime()) / 60000;
   const late = minutes > cadence * 3;
   el.freshness.dataset.state = late ? "late" : "current";
-  el.freshness.textContent = late
-    ? `newest scan ${age(scan.iso)} — behind the ${cadence} min cadence`
-    : `newest scan ${age(scan.iso)}`;
+  el.freshnessText.textContent = late
+    ? `newest ${age(scan.iso)} · behind the ${cadence} min cadence`
+    : `newest ${age(scan.iso)}`;
 }
 
 function renderTape() {
@@ -308,12 +369,21 @@ function renderTape() {
 
   const scans = state.scans;
   el.tapeCount.textContent = scans.length
-    ? `${scans.length} scans retained · ${stamp(scans[0].iso)} to ${stamp(scans[scans.length - 1].iso)}`
+    ? `${scans.length} scan${scans.length === 1 ? "" : "s"} retained · ${stamp(scans[0].iso)} to ${stamp(scans[scans.length - 1].iso)}`
     : "";
-  if (scans.length < 2) return;
+  el.latest.disabled = scans.length === 0 || state.cursor === scans.length - 1;
+  // One scan still gets a tick. Production regions retain a hundred and more,
+  // but a local bucket with a single scan should read as a short timeline
+  // rather than as a tape that failed to draw.
+  if (!scans.length) return;
 
   const first = scans[0].at.getTime();
   const span = scans[scans.length - 1].at.getTime() - first || 1;
+  // A tick is 2px wide, centred on its position, and the tape clips what
+  // overflows it — so the track is inset by half a tick at each end. Without
+  // it the oldest and the newest scan, which are the two worth pointing at,
+  // are each drawn half outside the box.
+  const alongTape = (time) => `calc(1px + (100% - 2px) * ${(time - first) / span})`;
   const positionOf = (scan) => ((scan.at.getTime() - first) / span) * 100;
 
   const fragment = document.createDocumentFragment();
@@ -322,7 +392,7 @@ function renderTape() {
     tick.className = "tick";
     if (isReady(scan)) tick.classList.add("is-ready");
     if (index === state.cursor) tick.classList.add("is-current");
-    tick.style.left = `${positionOf(scan)}%`;
+    tick.style.left = alongTape(scan.at.getTime());
     tick.dataset.index = String(index);
     fragment.append(tick);
   });
@@ -335,7 +405,7 @@ function renderTape() {
   for (let t = start; t <= first + span; t += day) {
     const label = document.createElement("span");
     label.className = "axis-label";
-    label.style.left = `${((t - first) / span) * 100}%`;
+    label.style.left = alongTape(t);
     const when = new Date(t);
     label.textContent = `${when.getUTCFullYear()}-${pad(when.getUTCMonth() + 1)}-${pad(when.getUTCDate())}`;
     el.tapeAxis.append(label);
@@ -345,13 +415,19 @@ function renderTape() {
   if (current) {
     const at = positionOf(current);
     el.tapeCursor.textContent = clock(current.iso);
-    el.tapeCursor.style.left = `${at}%`;
+    el.tapeCursor.style.left = alongTape(current.at.getTime());
     // Near an end the label would hang off the tape, so it anchors instead.
     el.tapeCursor.style.translate = at > 92 ? "-100% 0" : at < 8 ? "0 0" : "-50% 0";
   }
   el.tape.setAttribute("aria-valuemax", String(scans.length - 1));
   el.tape.setAttribute("aria-valuenow", String(Math.max(state.cursor, 0)));
   if (current) el.tape.setAttribute("aria-valuetext", `${stamp(current.iso)} UTC`);
+}
+
+/** The frame carries its own caption, so a screenshot of it is still dated. */
+function renderChips(scan) {
+  el.chipTime.textContent = `${stamp(scan.iso)} UTC`;
+  el.chipRegion.textContent = state.region || "";
 }
 
 function renderManifest(scan, meta) {
@@ -365,13 +441,27 @@ function renderManifest(scan, meta) {
   const common = own || state.facts;
   const pending = own ? null : "reading meta.json…";
 
+  el.manifestWhen.textContent = `${stamp(scan.iso)} UTC`;
+  el.manifestAge.textContent = age(scan.iso);
+
+  // Collapsed, the head still has to answer what this scan was computed from,
+  // so the three fields that move scan to scan are repeated there.
+  const summary = [
+    own?.skin_temperature
+      ? `GFS ${clock(own.skin_temperature.cycle)} +${own.skin_temperature.forecast_hour} h`
+      : pending,
+    own?.emissivity ? `CAMEL ${own.emissivity.month}` : pending,
+    common ? `shachen ${common.shachen_version}` : null,
+  ].filter(Boolean);
+  el.manifestSummary.innerHTML = summary.map((item) => `<span>${esc(item)}</span>`).join("");
+
   const fields = [];
   const add = (label, value, note) => {
     if (!value) return;
     fields.push(
-      `<div class="field"><span class="field-label">${label}</span><span class="field-value">${esc(value)}${
-        note ? `<small>${esc(note)}</small>` : ""
-      }</span></div>`,
+      `<div class="field"><dt class="field-label">${label}</dt><dd class="field-value">${esc(value)}</dd>${
+        note ? `<dd class="field-note">${esc(note)}</dd>` : ""
+      }</div>`,
     );
   };
 
@@ -417,22 +507,24 @@ function renderManifest(scan, meta) {
     own?.processing_seconds ? `${Math.round(own.processing_seconds)} s of compute` : null,
   );
 
+  el.manifestFields.innerHTML = fields.join("");
+
   const assets = own?.assets || scan.assets;
   const hasField = assets ? assets.includes("debra.nc") : scan.hasField;
 
-  el.manifest.innerHTML = `
-    <div class="manifest-head">
-      <span class="manifest-when">${stamp(scan.iso)} UTC</span>
-      <span class="manifest-age">${age(scan.iso)}</span>
-    </div>
-    ${fields.join("")}
-    <div class="downloads">
-      <a class="download" href="${imageUrl(scan, "debra.png")}" download>DEBRA png</a>
-      <a class="download" href="${imageUrl(scan, "dustrgb.png")}" download>Dust RGB png</a>
-      <a class="download" href="${imageUrl(scan, "debra.nc")}" download ${
-        hasField ? "" : 'aria-disabled="true" title="Field data for this scan has passed out of retention"'
-      }>Field netCDF</a>
-    </div>`;
+  el.manifestDownloads.innerHTML = `
+    <a class="download" href="${imageUrl(scan, "debra.png")}" download>DEBRA png</a>
+    <a class="download" href="${imageUrl(scan, "dustrgb.png")}" download>Dust RGB png</a>
+    <a class="download" href="${imageUrl(scan, "debra.nc")}" download ${
+      hasField ? "" : 'aria-disabled="true" title="Field data for this scan has passed out of retention"'
+    }>Field netCDF</a>`;
+}
+
+function setDetails(open) {
+  state.detailsOpen = open;
+  el.manifestToggle.setAttribute("aria-expanded", String(open));
+  el.manifestBody.hidden = !open;
+  el.manifestMoreLabel.textContent = open ? "Hide details" : "Details";
 }
 
 function fail(message) {
@@ -488,6 +580,7 @@ async function select(index, options = {}) {
     }
   }
 
+  renderChips(scan);
   renderTape();
   renderManifest(scan, state.metaCache.get(scan.iso));
   syncUrl(scan);
@@ -695,6 +788,8 @@ function wireButtons() {
   el.modeDebra.addEventListener("click", () => setMode("debra"));
   el.modeRgb.addEventListener("click", () => setMode("rgb"));
   el.modeCompare.addEventListener("click", () => setMode("compare"));
+  el.theme.addEventListener("click", cycleTheme);
+  el.manifestToggle.addEventListener("click", () => setDetails(!state.detailsOpen));
 }
 
 /**
@@ -719,6 +814,10 @@ async function refresh() {
 // -------------------------------------------------------------------- boot
 
 async function main() {
+  state.theme = readTheme();
+  applyTheme();
+  setDetails(state.detailsOpen);
+
   wireTape();
   wireHandle();
   wireKeys();
