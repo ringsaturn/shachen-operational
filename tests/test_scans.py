@@ -33,7 +33,7 @@ AHI = Region(
     bucket="noaa-himawari9",
     product="AHI-L1b-FLDK",
     cadence_minutes=10,
-    bbox=(80.0, 30.0, 135.0, 55.0),
+    bbox=(80.0, 30.0, 146.0, 55.0),
 )
 
 

@@ -52,7 +52,7 @@ ROOT_PREFIX = "shachen-ops"
 LAYOUT_VERSION = "v1"
 
 #: Retention defaults, in scans. The bucket has a hard 2 GB budget, and a
-#: published scan is roughly 4 MB of imagery plus 7-20 MB of field data, so the
+#: published scan is roughly 4 MB of imagery plus 7-23 MB of field data, so the
 #: two tiers are sized separately: imagery is cheap enough to keep for days,
 #: the netCDF is not. See :mod:`shachen_ops.retain`.
 KEEP_SCANS = 144

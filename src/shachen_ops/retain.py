@@ -1,9 +1,9 @@
 """Retention: keeping the published bucket inside a fixed storage budget.
 
-The bucket has 2 GB to work with and the pipeline writes about 1.7 GB a day,
+The bucket has 2 GB to work with and the pipeline writes about 1.8 GB a day,
 so nothing can be kept indefinitely and the only question is what to give up
 first. A published scan is two PNGs and a manifest — about 4 MB — plus
-``debra.nc``, which is 7 MB for ``swus`` and 20 MB for ``gobi`` and therefore
+``debra.nc``, which is 7 MB for ``swus`` and 23 MB for ``gobi`` and therefore
 roughly four fifths of everything written. Retention is tiered on exactly that
 split:
 

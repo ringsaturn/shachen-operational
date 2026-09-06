@@ -16,7 +16,7 @@ tests it is derived from.
 | Key | Satellite | Domain | Published |
 |---|---|---|---|
 | `swus` | GOES-19 (East), `ABI-L1b-RadC` | 115–95 °W, 25–40 °N | every 30 min |
-| `gobi` | Himawari-9, `AHI-L1b-FLDK` | 80–135 °E, 30–55 °N | every 30 min |
+| `gobi` | Himawari-9, `AHI-L1b-FLDK` | 80–146 °E, 30–55 °N | every 30 min |
 
 Regions live in [`regions.toml`](regions.toml); adding one is a config change.
 `publish_every_minutes` is deliberately coarser than the sensor cadence: ABI
@@ -26,6 +26,11 @@ day per region.
 The `gobi` domain reaches the western limb of the Himawari disk, so its
 north-western corner has no data. Himawari-9 is at 140.7 °E, and that corner
 falls outside the sensor's view.
+
+Widening a domain needs the `bootstrap-ancillary` workflow re-run for it: the
+staged CAMEL month is cropped to the bbox it was staged with, and the regrid
+extrapolates off the edge of it rather than failing, so the new ground would
+otherwise be processed against edge emissivity without saying so.
 
 ## Output layout
 
@@ -56,9 +61,9 @@ fails mid-publish leaves a scan that the next backfill redoes.
 
 ## Retention
 
-The bucket has a 2 GB budget and the pipeline writes about 1.7 GB a day, so
+The bucket has a 2 GB budget and the pipeline writes about 1.8 GB a day, so
 nothing is kept indefinitely. `debra.nc` is four fifths of the bytes (7 MB
-for `swus`, 20 MB for `gobi`, against 4 MB of imagery), so it is retained for
+for `swus`, 23 MB for `gobi`, against 4 MB of imagery), so it is retained for
 a shorter period than the imagery:
 
 | Age | Retained objects |
@@ -237,12 +242,12 @@ Measured on one scan of each region, on a laptop:
 | Wall time, cold | ~3 min | ~2.5 min |
 | Wall time, inputs cached | ~5 s | ~10 s |
 | Peak RSS | 2.9 GB | 2.6 GB |
-| Published per scan | ~11 MB | ~23 MB |
-| of which `debra.nc` | 7 MB | 20 MB |
+| Published per scan | ~11 MB | ~27 MB |
+| of which `debra.nc` | 7 MB | 23 MB |
 
 Fetching accounts for most of the wall time, and peak RSS stays within the
 16 GB of a 4-vCPU runner. At 48 scans a day across both regions that is about
-1.7 GB a day of new objects, against a 2 GB bucket, which is what the
+1.8 GB a day of new objects, against a 2 GB bucket, which is what the
 retention above reconciles and why `debra.nc` has the shortest retention.
 Steady state is near 1.5 GB, so R2 storage stays under one dollar a month and
 the writes (six per scan, ~17k a month) stay within the free tier.
