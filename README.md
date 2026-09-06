@@ -203,6 +203,7 @@ web/wrangler.jsonc              Pages project; binds the R2 bucket as BUCKET
 web/public/                     the site — no build step, no dependencies
 web/functions/api/regions.js    GET /api/regions, a delimited list of the layout root
 web/functions/r2/[[path]].js    GET /r2/{region}/...  streams one published object
+web/seed-local.sh               fills the local R2 that `wrangler pages dev` reads
 ```
 
 The bucket stays private. The browser never holds a credential and never
@@ -223,9 +224,17 @@ tape marks which frames are already in hand.
 
 ```sh
 cd web
-wrangler pages dev        # against a local R2; seed it with wrangler r2 object put --local
+./seed-local.sh           # copy ../localbucket into the local R2
+wrangler pages dev        # http://localhost:8788
 wrangler pages deploy     # or push to main and let the web workflow do it
 ```
+
+`pages dev` reads a local R2 and has no remote-bucket mode, and that bucket
+starts empty — so without the first step the viewer opens on "The bucket has
+no published regions yet." A `--dest` directory is already a bucket root, so
+`seed-local.sh` copies it in with the keys unchanged and the `Cache-Control` a
+real publish sets, which the functions pass through rather than invent. State
+lives in `web/.wrangler/`; delete it to start from an empty bucket.
 
 `BUCKET` in `wrangler.jsonc` has to name the same bucket the pipeline writes
 to — the `R2_BUCKET` repository variable, not the `shachen` default in
