@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>shachen · operational DEBRA-Dust</title>
+    <title>shachen — unattended dust detection</title>
     <meta
       name="description"
       content="Live DEBRA-Dust detections from GOES ABI and Himawari AHI, published every half hour."
     />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark light" />
 
     <!-- A stored theme has to reach <html> before the first paint, or a reader
          who chose light gets a frame of dark on every navigation. -->
@@ -24,29 +24,29 @@
 
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0b0b'/%3E%3Cpath d='M4 21c6-9 12 3 18-6' stroke='%23e0aa45' stroke-width='3' fill='none'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b0b0b'/%3E%3Cpath d='M3 20c6-9 12 3 18-6' stroke='%23edb247' stroke-width='3' fill='none'/%3E%3Ccircle cx='26' cy='9' r='2.5' fill='%23e0524c'/%3E%3C/svg%3E"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="rail">
-      <div class="rail-inner">
+    <div class="shell">
+      <header class="topbar">
         <a class="mark" href="/">
           <span class="mark-name">shachen</span>
-          <span class="mark-sub">DEBRA-Dust · operational</span>
+          <span class="mark-sub">unattended dust detection</span>
         </a>
 
-        <nav class="regions segment" id="regions" aria-label="Region">
-          <span class="regions-empty">Reading the bucket…</span>
+        <nav class="regions" id="regions" aria-label="Region">
+          <span class="regions-empty">Reading the bucket</span>
         </nav>
 
-        <div class="rail-end">
+        <div class="topbar-end">
           <p class="freshness" id="freshness">
             <span class="freshness-dot" aria-hidden="true"></span>
             <span id="freshnessText"></span>
@@ -57,12 +57,12 @@
               viewBox="0 0 16 16"
               fill="none"
               stroke="currentColor"
-              stroke-width="1.5"
+              stroke-width="1.4"
               aria-hidden="true"
             >
-              <circle cx="8" cy="8" r="6" />
+              <circle cx="8" cy="8" r="5.5" />
               <path
-                d="M8 2a6 6 0 0 1 0 12z"
+                d="M8 2.5a5.5 5.5 0 0 1 0 11z"
                 fill="currentColor"
                 stroke="none"
               />
@@ -70,282 +70,305 @@
             <span id="themeLabel">system</span>
           </button>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <main class="stage">
-      <section class="viewer" aria-label="Scan imagery">
-        <div class="frame" id="frame">
-          <img
-            class="layer layer-base"
-            id="layerBase"
-            alt=""
-            draggable="false"
-          />
-          <div class="layer layer-wipe" id="layerWipe">
-            <img class="layer-image" id="layerTop" alt="" draggable="false" />
-          </div>
+      <main class="stage">
+        <section class="viewer" aria-label="Scan imagery">
+          <div class="plate">
+            <div class="frame" id="frame">
+              <img
+                class="layer layer-base"
+                id="layerBase"
+                alt=""
+                draggable="false"
+              />
+              <div class="layer layer-wipe" id="layerWipe">
+                <img
+                  class="layer-image"
+                  id="layerTop"
+                  alt=""
+                  draggable="false"
+                />
+              </div>
 
-          <div class="chips">
-            <span class="chip" id="chipTime"></span>
-            <span class="chip chip-region" id="chipRegion"></span>
-          </div>
+              <div class="chips">
+                <span class="chip chip-time" id="chipTime"></span>
+                <span class="chip chip-region" id="chipRegion"></span>
+              </div>
 
-          <div class="tags" id="tags" hidden>
-            <span class="tag tag-left">DEBRA</span>
-            <span class="tag tag-right">Dust RGB</span>
-          </div>
+              <div class="tags" id="tags" hidden>
+                <span class="tag tag-left">DEBRA</span>
+                <span class="tag tag-right">Dust RGB</span>
+              </div>
 
-          <div
-            class="handle"
-            id="handle"
-            hidden
-            role="slider"
-            tabindex="0"
-            aria-label="Wipe between DEBRA and Dust RGB"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow="50"
-            aria-valuetext="Half DEBRA, half Dust RGB"
-          >
-            <span class="handle-grip" aria-hidden="true">
-              <svg viewBox="0 0 16 16">
-                <path d="M6 4 2 8l4 4z" />
-                <path d="M10 4l4 4-4 4z" />
-              </svg>
-            </span>
-          </div>
-
-          <p class="frame-note" id="frameNote" role="status"></p>
-        </div>
-      </section>
-
-      <div class="controls">
-        <div class="transport">
-          <button
-            class="button button-icon"
-            id="stepBack"
-            type="button"
-            aria-label="Previous scan"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M11 3 5.5 8 11 13z" />
-              <rect x="3.5" y="3" width="1.5" height="10" />
-            </svg>
-          </button>
-          <button
-            class="button button-play"
-            id="play"
-            type="button"
-            aria-pressed="false"
-          >
-            <svg class="glyph-play" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 3l9 5-9 5z" />
-            </svg>
-            <svg class="glyph-pause" viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="3.5" y="3" width="3.5" height="10" rx="1" />
-              <rect x="9" y="3" width="3.5" height="10" rx="1" />
-            </svg>
-            <span id="playLabel">Play</span>
-          </button>
-          <button
-            class="button button-icon"
-            id="stepForward"
-            type="button"
-            aria-label="Next scan"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M5 3l5.5 5L5 13z" />
-              <rect x="11" y="3" width="1.5" height="10" />
-            </svg>
-          </button>
-          <button class="button button-ghost" id="latest" type="button">
-            Newest
-          </button>
-        </div>
-
-        <div class="layers segment" role="group" aria-label="Layer">
-          <button
-            id="modeDebra"
-            type="button"
-            aria-pressed="true"
-            title="Key d"
-          >
-            DEBRA
-          </button>
-          <button id="modeRgb" type="button" aria-pressed="false" title="Key r">
-            Dust RGB
-          </button>
-          <button
-            id="modeCompare"
-            type="button"
-            aria-pressed="false"
-            title="Key c"
-          >
-            Compare
-          </button>
-        </div>
-      </div>
-
-      <section class="tape-wrap" aria-label="Retained scans">
-        <div
-          class="tape"
-          id="tape"
-          role="slider"
-          tabindex="0"
-          aria-label="Retained scans"
-          aria-valuemin="0"
-          aria-valuemax="0"
-          aria-valuenow="0"
-        >
-          <span class="tape-cursor" id="tapeCursor" aria-hidden="true"></span>
-        </div>
-        <div class="tape-axis" id="tapeAxis" aria-hidden="true"></div>
-        <p class="tape-legend">
-          <span><span class="key key-scan"></span> published</span>
-          <span><span class="key key-ready"></span> loaded here</span>
-          <span><span class="key key-now"></span> on screen</span>
-          <span class="tape-count" id="tapeCount"></span>
-        </p>
-      </section>
-
-      <section class="manifest" id="manifest" aria-label="Scan manifest">
-        <button
-          class="manifest-head"
-          id="manifestToggle"
-          type="button"
-          aria-expanded="true"
-          aria-controls="manifestBody"
-        >
-          <span class="manifest-when" id="manifestWhen"></span>
-          <span class="manifest-age" id="manifestAge"></span>
-          <span class="manifest-summary" id="manifestSummary"></span>
-          <span class="manifest-more">
-            <span id="manifestMoreLabel">Hide details</span>
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              aria-hidden="true"
-            >
-              <path d="M3 6l5 5 5-5" />
-            </svg>
-          </span>
-        </button>
-
-        <div class="manifest-body" id="manifestBody">
-          <dl class="fields" id="manifestFields"></dl>
-          <div class="downloads" id="manifestDownloads"></div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="foot">
-      <div class="foot-inner">
-        <p class="foot-lede">
-          Dust is coloured by detection confidence over an unmodified
-          background; the Dust RGB is the same scene under the classic recipe,
-          for comparison. Every scan here was produced unattended, from open
-          archives, and nothing on this page is an official product of the
-          agencies below.
-        </p>
-
-        <dl class="sources">
-          <div class="source">
-            <dt>Observations</dt>
-            <dd>
-              GOES-19 ABI and Himawari-9 AHI L1b radiances (NOAA, and
-              <a href="https://www.jma.go.jp/jma/jma-eng/satellite/index.html"
-                >JMA</a
+              <div
+                class="handle"
+                id="handle"
+                hidden
+                role="slider"
+                tabindex="0"
+                aria-label="Wipe between DEBRA and Dust RGB"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="50"
+                aria-valuetext="Half DEBRA, half Dust RGB"
               >
-              for Himawari), read through
-              <a href="https://registry.opendata.aws/noaa-goes/"
-                >NODD on AWS Open Data</a
-              >, which is open to the public.
-            </dd>
-            <dd>
-              JMA's own
-              <a href="https://www.eorc.jaxa.jp/ptree/terms.html">P-Tree</a>
-              channel carries a research-and-education-only condition; it is not
-              used here.
-            </dd>
+                <span class="handle-grip" aria-hidden="true">
+                  <svg viewBox="0 0 20 12">
+                    <path d="M7 1 1.5 6 7 11z" />
+                    <path d="M13 1 18.5 6 13 11z" />
+                  </svg>
+                </span>
+              </div>
+
+              <p class="frame-note" id="frameNote" role="status"></p>
+            </div>
           </div>
 
-          <div class="source">
-            <dt>Ancillary fields</dt>
-            <dd>
-              Skin temperature: GFS 0.25° <code>TMP:surface</code> (NOAA, via
-              NODD).
-            </dd>
-            <dd>
-              Emissivity:
-              <a href="https://doi.org/10.5067/MEaSUREs/LSTE/CAM5K30EM.003"
-                >CAMEL V003</a
-              >, Borbas et al. 2023, NASA LP DAAC, under
-              <a
-                href="https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance"
-                >EOSDIS data use guidance</a
-              >.
-            </dd>
+          <div class="deck">
+            <div class="layers" role="group" aria-label="Layer">
+              <button
+                id="modeDebra"
+                type="button"
+                aria-pressed="true"
+                title="Key d"
+              >
+                DEBRA
+              </button>
+              <button
+                id="modeRgb"
+                type="button"
+                aria-pressed="false"
+                title="Key r"
+              >
+                Dust RGB
+              </button>
+              <button
+                id="modeCompare"
+                type="button"
+                aria-pressed="false"
+                title="Key c"
+              >
+                Compare
+              </button>
+            </div>
+
+            <div class="transport">
+              <button
+                class="button button-icon"
+                id="stepBack"
+                type="button"
+                aria-label="Previous scan"
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M11 3 5.5 8 11 13z" />
+                  <rect x="3.5" y="3" width="1.5" height="10" />
+                </svg>
+              </button>
+              <button
+                class="button button-play"
+                id="play"
+                type="button"
+                aria-pressed="false"
+              >
+                <svg class="glyph-play" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 3l9 5-9 5z" />
+                </svg>
+                <svg class="glyph-pause" viewBox="0 0 16 16" aria-hidden="true">
+                  <rect x="3.5" y="3" width="3.5" height="10" rx="1" />
+                  <rect x="9" y="3" width="3.5" height="10" rx="1" />
+                </svg>
+                <span id="playLabel">Play</span>
+              </button>
+              <button
+                class="button button-icon"
+                id="stepForward"
+                type="button"
+                aria-label="Next scan"
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M5 3l5.5 5L5 13z" />
+                  <rect x="11" y="3" width="1.5" height="10" />
+                </svg>
+              </button>
+              <button class="button button-ghost" id="latest" type="button">
+                Newest
+              </button>
+            </div>
           </div>
 
-          <div class="source">
-            <dt>Algorithms</dt>
-            <dd>
-              DEBRA:
-              <a href="https://doi.org/10.1002/2017JD027365"
-                >Miller et al. 2017</a
-              >.
-            </dd>
-            <dd>
-              Dust RGB:
-              <a href="https://doi.org/10.5194/acp-8-6739-2008"
-                >Lensky &amp; Rosenfeld 2008</a
-              >, in the EUMETSAT band combination.
-            </dd>
+          <div class="timeline">
+            <div
+              class="tape"
+              id="tape"
+              role="slider"
+              tabindex="0"
+              aria-label="Retained scans"
+              aria-valuemin="0"
+              aria-valuemax="0"
+              aria-valuenow="0"
+            >
+              <span class="tape-cursor" id="tapeCursor" aria-hidden="true"
+              ></span>
+            </div>
+            <div class="tape-axis" id="tapeAxis" aria-hidden="true"></div>
+            <p class="tape-count" id="tapeCount"></p>
           </div>
+        </section>
 
-          <div class="source">
-            <dt>Basemap</dt>
-            <dd>
-              <a href="https://www.naturalearthdata.com/about/terms-of-use/"
-                >Natural Earth</a
-              >, public domain, drawn with
-              <a href="https://scitools.org.uk/cartopy/">cartopy</a>. Boundaries
-              are cartographic, not a statement of any position on them.
-            </dd>
-          </div>
+        <aside class="rail">
+          <section class="manifest" id="manifest" aria-label="Scan manifest">
+            <button
+              class="manifest-head"
+              id="manifestToggle"
+              type="button"
+              aria-expanded="true"
+              aria-controls="manifestBody"
+            >
+              <span class="manifest-when" id="manifestWhen"></span>
+              <span class="manifest-age" id="manifestAge"></span>
+              <span class="manifest-summary" id="manifestSummary"></span>
+              <span class="manifest-more">
+                <span id="manifestMoreLabel">Hide details</span>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="M3 6l5 5 5-5" />
+                </svg>
+              </span>
+            </button>
 
-          <div class="source">
-            <dt>Software</dt>
-            <dd>
-              <a href="https://github.com/ringsaturn/shachen">shachen</a> and
+            <div class="manifest-body" id="manifestBody">
+              <dl class="fields" id="manifestFields"></dl>
+              <div class="downloads" id="manifestDownloads"></div>
+            </div>
+          </section>
+
+          <section class="notes" aria-label="About this page">
+            <p class="notes-lede">
+              Dust is coloured by detection confidence over an unmodified
+              background. The Dust RGB is the same scene under the classic
+              recipe, for comparison. Every scan was produced unattended from
+              open archives, and nothing here is an official product of the
+              agencies below.
+            </p>
+
+            <p class="keys">
+              <span><kbd>←</kbd><kbd>→</kbd> step</span>
+              <span><kbd>space</kbd> play</span>
+              <span><kbd>d</kbd><kbd>r</kbd><kbd>c</kbd> layers</span>
+            </p>
+
+            <p class="retention" id="footRetention"></p>
+
+            <details class="sources-wrap">
+              <summary>Where the data comes from</summary>
+
+              <dl class="sources">
+                <div class="source">
+                  <dt>Observations</dt>
+                  <dd>
+                    GOES-19 ABI and Himawari-9 AHI L1b radiances (NOAA, and
+                    <a
+                      href="https://www.jma.go.jp/jma/jma-eng/satellite/index.html"
+                      >JMA</a
+                    >
+                    for Himawari), read through
+                    <a href="https://registry.opendata.aws/noaa-goes/"
+                      >NODD on AWS Open Data</a
+                    >, which is open to the public.
+                  </dd>
+                  <dd>
+                    JMA's own
+                    <a href="https://www.eorc.jaxa.jp/ptree/terms.html"
+                      >P-Tree</a
+                    >
+                    channel carries a research-and-education-only condition; it
+                    is not used here.
+                  </dd>
+                </div>
+
+                <div class="source">
+                  <dt>Ancillary fields</dt>
+                  <dd>
+                    Skin temperature: GFS 0.25° <code>TMP:surface</code> (NOAA,
+                    via NODD).
+                  </dd>
+                  <dd>
+                    Emissivity:
+                    <a href="https://doi.org/10.5067/MEaSUREs/LSTE/CAM5K30EM.003"
+                      >CAMEL V003</a
+                    >, Borbas et al. 2023, NASA LP DAAC, under
+                    <a
+                      href="https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance"
+                      >EOSDIS data use guidance</a
+                    >.
+                  </dd>
+                </div>
+
+                <div class="source">
+                  <dt>Algorithms</dt>
+                  <dd>
+                    DEBRA:
+                    <a href="https://doi.org/10.1002/2017JD027365"
+                      >Miller et al. 2017</a
+                    >.
+                  </dd>
+                  <dd>
+                    Dust RGB:
+                    <a href="https://doi.org/10.5194/acp-8-6739-2008"
+                      >Lensky &amp; Rosenfeld 2008</a
+                    >, in the EUMETSAT band combination.
+                  </dd>
+                </div>
+
+                <div class="source">
+                  <dt>Basemap</dt>
+                  <dd>
+                    <a href="https://www.naturalearthdata.com/about/terms-of-use/"
+                      >Natural Earth</a
+                    >, public domain, drawn with
+                    <a href="https://scitools.org.uk/cartopy/">cartopy</a>.
+                    Boundaries are cartographic, not a statement of any position
+                    on them.
+                  </dd>
+                </div>
+
+                <div class="source">
+                  <dt>Software</dt>
+                  <dd>
+                    <a href="https://github.com/ringsaturn/shachen">shachen</a>
+                    and
+                    <a href="https://github.com/ringsaturn/shachen-operational"
+                      >shachen-operational</a
+                    >, both Apache-2.0.
+                  </dd>
+                </div>
+              </dl>
+
+              <p class="terms">
+                What is published here is modified data — a derived product of
+                this pipeline, not original or unaltered NOAA, JMA or NASA data,
+                and no endorsement or affiliation is implied. Reuse these
+                composites and fields freely with credit; the observations
+                themselves stay under their own providers' terms.
+              </p>
+            </details>
+
+            <p class="repo-links">
               <a href="https://github.com/ringsaturn/shachen-operational"
                 >shachen-operational</a
-              >, both Apache-2.0.
-            </dd>
-          </div>
-        </dl>
-
-        <p class="foot-terms">
-          What is published here is modified data — a derived product of this
-          pipeline, not original or unaltered NOAA, JMA or NASA data, and no
-          endorsement or affiliation is implied. Reuse these composites and
-          fields freely with credit; the observations themselves stay under
-          their own providers' terms.
-        </p>
-
-        <p class="foot-links">
-          <a href="https://github.com/ringsaturn/shachen-operational"
-            >shachen-operational</a
-          >
-          <a href="https://github.com/ringsaturn/shachen">shachen</a>
-          <span id="footRetention"></span>
-          <span>←/→ step · space play · d r c layers</span>
-        </p>
-      </div>
-    </footer>
+              >
+              <a href="https://github.com/ringsaturn/shachen">shachen</a>
+            </p>
+          </section>
+        </aside>
+      </main>
+    </div>
 
     <script src="/app.js" type="module"></script>
   </body>

@@ -1,8 +1,11 @@
 /*
- * Colours are sampled from the imagery itself: the plate black the composites
- * letterbox to, the yellow DEBRA paints dust with, and the red of the
- * political boundaries it draws over them. The page is the margin of the
- * plate, so it stays out of the way of the picture.
+ * The page is an instrument surround, not a document.
+ *
+ * The imagery is a near-black infrared plate with red coastlines and yellow
+ * dust painted over it, so the page holds a graphite ground that lets the
+ * plate read as a plate, and spends its only colour on the two things that
+ * are states rather than decoration: dust yellow for what is live and on
+ * screen, boundary red for a cadence that has been missed.
  *
  * Both schemes live in one set of tokens. light-dark() resolves against the
  * root's color-scheme, so the system preference is the default and the theme
@@ -11,32 +14,32 @@
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark light;
 
-  --bg: light-dark(#f3f5f8, #0f1114);
-  --panel: light-dark(#ffffff, #161a1f);
-  --panel-sunk: light-dark(#e9edf2, #1c2127);
-  --rule: light-dark(#dde2e9, #262c34);
-  --rule-bright: light-dark(#c4ccd6, #353d47);
-  --text: light-dark(#14181d, #ecedef);
-  --muted: light-dark(#59626e, #9a9ea8);
-  --dim: light-dark(#8792a0, #6b7078);
-  --dust: light-dark(#b8811c, #e0aa45);
-  --dust-ink: light-dark(#ffffff, #151005);
-  --dust-soft: light-dark(rgba(184, 129, 28, 0.14), rgba(224, 170, 69, 0.16));
-  --warn: light-dark(#c62828, #e04a4a);
-  --link: light-dark(#1f6fa8, #6da8d8);
+  --ground: light-dark(#e7eaee, #0d1013);
+  --surface: light-dark(#f4f6f8, #14181c);
+  --line: light-dark(#ccd2d9, #232930);
+  --line-bright: light-dark(#aab2bc, #333b44);
+  --text: light-dark(#171b1f, #e6e9ec);
+  --muted: light-dark(#576068, #98a1ab);
+  --faint: light-dark(#7b848e, #6c757e);
+  --dust: light-dark(#9a6a05, #edb247);
+  --dust-ink: light-dark(#fffdf7, #1a1204);
+  --dust-soft: light-dark(rgba(154, 106, 5, 0.13), rgba(237, 178, 71, 0.15));
+  --alarm: light-dark(#b8302b, #e0524c);
+  --link: light-dark(#1f6390, #8ab8dd);
 
-  /* The composites letterbox to this. The frame keeps it in both schemes: a
-     white surround on a black plate is a border, not a background. */
+  /* The composites letterbox to this, so the frame keeps it in both schemes:
+     a white surround on a black plate is a border, not a background. */
   --plate: #0b0b0b;
-  --over: rgba(11, 11, 11, 0.7);
+  --over: rgba(9, 9, 9, 0.72);
+  --on-plate: #e6e9ec;
 
-  --display: "Geist", "Helvetica Neue", Arial, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --gap: clamp(14px, 3vw, 32px);
-  --column: 1200px;
+  --pad: clamp(14px, 2.2vw, 24px);
+  --rail: 22rem;
   --plate-ratio: 1.5;
   --wipe: 50%;
 }
@@ -60,25 +63,23 @@ body {
 }
 
 body {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
+  background: var(--ground);
   color: var(--text);
-  font-family: var(--display);
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: var(--ui);
+  font-size: 14px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
 a {
   color: var(--link);
-  text-decoration-color: color-mix(in srgb, var(--link) 35%, transparent);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
 a:hover {
-  color: var(--text);
+  text-decoration-color: currentColor;
 }
 
 button {
@@ -89,116 +90,109 @@ button {
 :focus-visible {
   outline: 2px solid var(--dust);
   outline-offset: 2px;
+  border-radius: 3px;
 }
 
-/* A segmented control: regions in the header, layers under the frame. One
-   pressed at a time, and the pressed one carries the dust. */
-
-.segment {
+.shell {
+  min-height: 100dvh;
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--panel-sunk);
+  flex-direction: column;
 }
 
-.segment button {
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  transition: background 0.15s, color 0.15s;
-}
+/* --------------------------------------------------------------- topbar */
 
-.segment button:hover {
-  color: var(--text);
-}
-
-.segment button[aria-pressed="true"] {
-  background: var(--dust);
-  color: var(--dust-ink);
-}
-
-/* ---------------------------------------------------------------- header */
-
-/* The bands and their rules span the window; what is in them sits in one
-   column with the stage, so the mark, the plate and the attribution all start
-   at the same x. Prose beginning at the window's edge under a plate floating
-   in the middle of the page is the imbalance this avoids. */
-
-.rail {
-  padding: 14px var(--gap);
-  border-bottom: 1px solid var(--rule);
-}
-
-.rail-inner,
-.foot-inner {
-  width: 100%;
-  max-width: calc(var(--column) - 2 * var(--gap));
-  margin-inline: auto;
-}
-
-.rail-inner {
+.topbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 20px;
+  gap: 10px var(--pad);
+  padding: 10px var(--pad);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .mark {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
   text-decoration: none;
   color: inherit;
+  line-height: 1.25;
 }
 
 .mark-name {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .mark-sub {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--dim);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* Regions are places to look at, so they are named tabs rather than a
+   segmented switch: the key is the identifier the URL and the bucket use, and
+   the line under it is where on earth that is. */
+
+.regions {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-inline-end: auto;
 }
 
 .regions-empty {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--dim);
-  padding: 6px 4px;
+  align-self: center;
+  font-size: 12.5px;
+  color: var(--faint);
 }
 
 .region {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 6px 12px;
+  gap: 1px;
+  padding: 5px 10px 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 5px 5px 0 0;
+  background: transparent;
+  color: var(--muted);
   line-height: 1.2;
   text-align: start;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.region:hover {
+  color: var(--text);
+  background: var(--ground);
+}
+
+.region[aria-pressed="true"] {
+  color: var(--text);
+  border-bottom-color: var(--dust);
 }
 
 .region-key {
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  font-weight: 500;
 }
 
 .region-where {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  opacity: 0.75;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--faint);
 }
 
-.rail-end {
-  margin-inline-start: auto;
+.region[aria-pressed="true"] .region-where {
+  color: var(--muted);
+}
+
+.topbar-end {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -209,9 +203,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
@@ -219,18 +211,23 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--dim);
+  background: var(--faint);
+  flex: none;
 }
 
 /* The pulse says the page is watching, not that anything just happened; it
    stops when the cadence has been missed, where a steady red is the point. */
 .freshness[data-state="current"] .freshness-dot {
   background: var(--dust);
-  animation: pulse 2.4s ease-in-out infinite;
+  animation: pulse 3s ease-in-out infinite;
 }
 
 .freshness[data-state="late"] .freshness-dot {
-  background: var(--warn);
+  background: var(--alarm);
+}
+
+.freshness[data-state="late"] {
+  color: var(--alarm);
 }
 
 @keyframes pulse {
@@ -247,55 +244,60 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
+  height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
   color: var(--muted);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12.5px;
 }
 
 .theme:hover {
   color: var(--text);
-  border-color: var(--rule-bright);
+  border-color: var(--line-bright);
 }
 
 .theme svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
-/* ----------------------------------------------------------------- stage */
+/* ---------------------------------------------------------------- stage */
 
 .stage {
   flex: 1;
-  width: 100%;
-  max-width: var(--column);
-  margin-inline: auto;
-  padding: var(--gap);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .viewer {
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--pad);
+}
+
+.plate {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
 }
 
 .frame {
   position: relative;
-  /* Full width of the column, with the height following the plate's own
-     ratio — the image fills the frame exactly, so the wipe maps to real
-     pixels and the plate lines up with the controls under it. */
-  aspect-ratio: var(--plate-ratio);
   width: 100%;
-  border: 1px solid var(--rule);
-  border-radius: 14px;
+  /* The frame carries the plate's own ratio, so the picture fills it exactly:
+     the wipe then maps to real pixels rather than to letterbox. */
+  aspect-ratio: var(--plate-ratio);
   background: var(--plate);
+  border-radius: 4px;
+  /* In light the plate would otherwise read as a hole punched in the page. */
+  box-shadow: 0 0 0 1px var(--line);
   overflow: hidden;
   touch-action: pan-y;
   user-select: none;
@@ -341,34 +343,41 @@ button {
   opacity: 0;
 }
 
-/* What is on screen, over the picture: the scan's own time and the region it
-   is of, so a screenshot of the frame carries them. */
+/* The scan's own time and region ride on the picture, so a screenshot of the
+   frame is still dated and placed. */
 
 .chips {
   position: absolute;
-  left: 12px;
-  top: 12px;
+  left: 10px;
+  top: 10px;
   display: flex;
-  gap: 6px;
-  pointer-events: none;
-}
-
-.chip {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 5px 9px;
-  border-radius: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 6px 9px 7px;
+  border-radius: 5px;
   background: var(--over);
-  color: #ecedef;
+  pointer-events: none;
 }
 
 .chip:empty {
   display: none;
 }
 
+.chips:not(:has(.chip:not(:empty))) {
+  display: none;
+}
+
+.chip-time {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--on-plate);
+}
+
 .chip-region {
-  color: #9a9ea8;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #9aa2ac;
 }
 
 .tags[hidden],
@@ -378,29 +387,24 @@ button {
 
 .tags {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
   display: flex;
   justify-content: space-between;
   pointer-events: none;
 }
 
 .tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: 6px;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
   background: var(--over);
-  color: #ecedef;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--on-plate);
 }
 
 .tag-left {
-  color: #e0aa45;
-  border-color: rgba(224, 170, 69, 0.4);
+  color: #edb247;
 }
 
 /* The divider is still a slider: dragging it is the obvious gesture, but the
@@ -411,10 +415,9 @@ button {
   top: 0;
   bottom: 0;
   left: var(--wipe);
-  width: 2px;
-  margin-inline-start: -1px;
-  background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  width: 1px;
+  margin-inline-start: -0.5px;
+  background: rgba(255, 255, 255, 0.85);
   cursor: ew-resize;
 }
 
@@ -423,20 +426,19 @@ button {
   top: 50%;
   left: 50%;
   translate: -50% -50%;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: rgba(11, 11, 11, 0.55);
-  backdrop-filter: blur(3px);
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--over);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .handle-grip svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 12px;
   fill: #fff;
 }
 
@@ -449,51 +451,96 @@ button {
   padding: 0 1rem;
   text-align: center;
   font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: #9a9ea8;
+  font-size: 12.5px;
+  color: #9aa2ac;
 }
 
 .frame-note:empty {
   display: none;
 }
 
-/* -------------------------------------------------------------- controls */
+html[data-state="loading"] .frame::after {
+  content: "Loading the newest scan";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  translate: 0 -50%;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: #6c757e;
+}
 
-.controls {
+/* ----------------------------------------------------------------- deck */
+
+.deck {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+/* One layer is on the plate at a time, and which one is the single most
+   consequential thing on this bar — so it is the one filled control here. */
+
+.layers {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.layers button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.layers button:hover {
+  color: var(--text);
+}
+
+.layers button[aria-pressed="true"] {
+  background: var(--dust);
+  color: var(--dust-ink);
+  font-weight: 500;
 }
 
 .transport {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 36px;
-  border: 1px solid var(--rule);
-  border-radius: 9px;
-  background: var(--panel);
+  gap: 7px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--muted);
   font-size: 13px;
 }
 
 .button:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--rule-bright);
+  background: var(--surface);
+  border-color: var(--line);
 }
 
 .button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
@@ -504,17 +551,18 @@ button {
 }
 
 .button-icon {
-  width: 36px;
+  width: 32px;
 }
 
 .button-play {
-  padding: 0 14px 0 12px;
+  padding: 0 13px 0 11px;
+  border-color: var(--line);
+  background: var(--surface);
   color: var(--text);
-  font-weight: 500;
 }
 
 .button-play[aria-pressed="true"] {
-  border-color: var(--dust);
+  border-color: color-mix(in srgb, var(--dust) 55%, transparent);
   background: var(--dust-soft);
   color: var(--dust);
 }
@@ -532,49 +580,40 @@ button {
 }
 
 .button-ghost {
-  padding: 0 12px;
-  background: transparent;
+  padding: 0 11px;
 }
 
-.layers button {
-  height: 30px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 500;
-}
+/* ------------------------------------------------------------- timeline */
 
-/* ------------------------------------------------------------------ tape */
+/* Ticks stand on a hairline rather than sitting in a box: the gaps between
+   them are real, so the strip reads as elapsed time, and the tall one is
+   what is on the plate. */
 
-.tape-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.timeline {
+  display: grid;
+  gap: 2px;
 }
 
 .tape {
   position: relative;
-  height: 52px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--panel);
+  height: 40px;
   cursor: crosshair;
   touch-action: none;
-  overflow: hidden;
+  border-bottom: 1px solid var(--line-bright);
 }
 
 .tick {
   position: absolute;
   bottom: 0;
   width: 2px;
-  height: 11px;
+  height: 8px;
   translate: -50% 0;
-  background: var(--rule-bright);
-  border-radius: 1px 1px 0 0;
-  transition: height 0.15s;
+  background: var(--line-bright);
+  transition: height 0.15s, background 0.15s;
 }
 
 .tick.is-ready {
-  height: 18px;
+  height: 15px;
   background: var(--muted);
 }
 
@@ -585,21 +624,20 @@ button {
 
 .tape-cursor {
   position: absolute;
-  top: 6px;
+  top: 1px;
   translate: -50% 0;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--panel);
+  padding: 0 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--dust);
+  background: var(--ground);
   white-space: nowrap;
   pointer-events: none;
 }
 
 .tape-axis {
   position: relative;
-  height: 16px;
+  height: 15px;
 }
 
 .axis-label {
@@ -607,71 +645,41 @@ button {
   top: 0;
   translate: -50% 0;
   font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  color: var(--dim);
+  font-size: 11px;
+  color: var(--faint);
   white-space: nowrap;
 }
 
-.tape-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: var(--dim);
-}
-
-.tape-legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.key {
-  display: inline-block;
-  width: 2px;
-  height: 10px;
-  background: var(--rule-bright);
-}
-
-.key-ready {
-  height: 14px;
-  background: var(--muted);
-}
-
-.key-now {
-  height: 14px;
-  background: var(--dust);
-}
-
 .tape-count {
-  margin-inline-start: auto;
+  margin: 0;
+  font-size: 12px;
+  color: var(--faint);
 }
 
-/* -------------------------------------------------------------- manifest */
+/* ----------------------------------------------------------------- rail */
 
-.manifest {
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  background: var(--panel);
-  overflow: hidden;
+.rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: var(--pad);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }
 
-/* Collapsed, the head is the answer to "what am I looking at": the time, how
-   old it is, and the three fields that change from scan to scan. */
+/* What this scan is, and what it was computed from. The head answers the
+   first question on its own, so it stays useful collapsed. */
 
 .manifest-head {
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
-  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 0 0 10px;
   border: 0;
+  border-bottom: 1px solid var(--line);
   background: transparent;
   color: inherit;
   text-align: start;
@@ -679,33 +687,45 @@ button {
 
 .manifest-when {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
 .manifest-age {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  justify-self: end;
+  font-size: 12.5px;
   color: var(--dust);
 }
 
 .manifest-summary {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
+  gap: 2px 12px;
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 
+/* Expanded, every one of those is spelled out below; repeating them here
+   would be the same line twice. */
+.manifest-head[aria-expanded="true"] .manifest-summary {
+  display: none;
+}
+
 .manifest-more {
-  margin-inline-start: auto;
+  grid-column: 1 / -1;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+.manifest-head:hover .manifest-more {
+  color: var(--text);
 }
 
 .manifest-more svg {
@@ -723,66 +743,57 @@ button {
 }
 
 .manifest-body {
-  border-top: 1px solid var(--rule);
-  padding: 14px 16px 16px;
+  padding-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .fields {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px 20px;
+  gap: 13px;
 }
 
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  gap: 1px;
   min-width: 0;
 }
 
 .field-label {
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dim);
+  font-size: 12.5px;
+  color: var(--faint);
 }
 
 .field-value,
 .field-note {
   margin: 0;
-  font-family: var(--mono);
   overflow-wrap: anywhere;
 }
 
 .field-value {
-  font-size: 12.5px;
+  font-family: var(--mono);
+  font-size: 13px;
   color: var(--text);
 }
 
 .field-note {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
 .downloads {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .download {
-  padding: 7px 12px;
-  border: 1px solid var(--rule-bright);
-  border-radius: 8px;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 6px 11px;
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  font-size: 12.5px;
   text-decoration: none;
   color: var(--muted);
 }
@@ -797,37 +808,97 @@ button {
   pointer-events: none;
 }
 
-/* ---------------------------------------------------------------- footer */
+/* ---------------------------------------------------------------- notes */
 
-.foot {
-  border-top: 1px solid var(--rule);
-  padding: 20px var(--gap) 28px;
-  /* Attribution is prose to be read, not chrome: --muted clears AA on the
-     page ground at this size where --dim would not. */
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.foot-inner {
+.notes {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: auto;
+  padding-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
-.foot p {
+.notes p {
   margin: 0;
-  max-width: 78ch;
+  max-width: 62ch;
   text-wrap: pretty;
+}
+
+.notes-lede {
+  color: var(--muted);
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--faint);
+}
+
+.keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.retention {
+  color: var(--faint);
+}
+
+.retention:empty {
+  display: none;
+}
+
+.sources-wrap > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.sources-wrap > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sources-wrap > summary::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-inline-end: 1.4px solid currentColor;
+  border-block-end: 1.4px solid currentColor;
+  rotate: -45deg;
+  transition: rotate 0.2s;
+}
+
+.sources-wrap[open] > summary::before {
+  rotate: 45deg;
+}
+
+.sources-wrap > summary:hover {
+  color: var(--text);
 }
 
 /* Attribution set as a term-and-sources list rather than as prose: a reader
    chasing one source should find it without reading the other four. */
 
 .sources {
-  margin: 0;
+  margin: 14px 0 0;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .source {
@@ -836,16 +907,14 @@ button {
 }
 
 .source dt {
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dim);
+  color: var(--text);
 }
 
 .source dd {
   margin: 0;
-  max-width: 74ch;
+  max-width: 62ch;
   font-size: 12.5px;
   /* A DOI is one long unbreakable token and will push past a phone-width
      column unless it is allowed to break anywhere. */
@@ -858,45 +927,16 @@ button {
   color: var(--text);
 }
 
-@media (min-width: 720px) {
-  .source {
-    grid-template-columns: 8.5rem minmax(0, 1fr);
-    column-gap: 20px;
-  }
-
-  .source dt {
-    grid-column: 1;
-    padding-top: 2px;
-  }
-
-  /* Two sources under one term stack in the second column; without this the
-     second would be auto-placed back under the label. */
-  .source dd {
-    grid-column: 2;
-  }
+.terms {
+  margin-top: 14px !important;
+  color: var(--faint);
 }
 
-.foot-terms {
-  font-size: 12.5px;
-}
-
-.foot-links {
+.repo-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 4px;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.foot-links a {
-  text-decoration: none;
-}
-
-.foot-links span {
-  color: var(--dim);
+  gap: 14px;
+  padding-top: 2px;
 }
 
 /* --------------------------------------------------------------- states */
@@ -907,14 +947,62 @@ html[data-state="failed"] .manifest {
 }
 
 .notice {
-  border: 1px solid var(--warn);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
-  padding: 12px 16px;
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 12.5px;
+  grid-column: 1 / -1;
+  margin: var(--pad) var(--pad) 0;
+  padding: 11px 14px;
+  border: 1px solid var(--alarm);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--alarm) 9%, var(--surface));
+  font-size: 13px;
   color: var(--text);
+}
+
+/* ---------------------------------------------------------- wide layout */
+
+/* Past this width the whole instrument fits one screen: the plate takes the
+   height it can get, the controls stay under it, and only the rail scrolls.
+   Below it the page is an ordinary scrolling column. */
+
+@media (min-width: 1040px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .shell {
+    height: 100dvh;
+  }
+
+  .stage {
+    grid-template-columns: minmax(0, 1fr) var(--rail);
+    overflow: hidden;
+  }
+
+  .plate {
+    container-type: size;
+  }
+
+  .frame {
+    width: min(100%, calc(100cqh * var(--plate-ratio)));
+  }
+
+  .rail {
+    overflow-y: auto;
+    border-top: 0;
+    border-inline-start: 1px solid var(--line);
+  }
+
+  .notice {
+    grid-column: 1;
+    margin: var(--pad) 0 0 var(--pad);
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --rail: 25rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

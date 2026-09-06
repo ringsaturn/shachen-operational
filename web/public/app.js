@@ -326,11 +326,20 @@ function cycleTheme() {
 
 // -------------------------------------------------------------- rendering
 
-/** "GOES-19 · ABI" — the product code carries the sensor the key does not. */
+/**
+ * The key is the identifier; the tab's second line says where that is.
+ *
+ * A description names the domain more than once — "Gobi / Taklamakan through
+ * the North China Plain to Japan" — and the shortest of those names is the one
+ * that fits a tab. The full text stays on the button as its title.
+ */
 function regionSubtitle(region) {
-  const sensor = (region.product || "").split("-")[0];
-  if (region.satellite && sensor) return `${region.satellite} · ${sensor}`;
-  return region.satellite || region.description || "";
+  const names = (region.description || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.length - b.length);
+  return names[0] || region.satellite || "";
 }
 
 function renderRegions() {
@@ -359,7 +368,7 @@ function renderFreshness() {
   const late = minutes > cadence * 3;
   el.freshness.dataset.state = late ? "late" : "current";
   el.freshnessText.textContent = late
-    ? `newest ${age(scan.iso)} · behind the ${cadence} min cadence`
+    ? `newest ${age(scan.iso)}, behind the ${cadence} min cadence`
     : `newest ${age(scan.iso)}`;
 }
 
@@ -369,7 +378,7 @@ function renderTape() {
 
   const scans = state.scans;
   el.tapeCount.textContent = scans.length
-    ? `${scans.length} scan${scans.length === 1 ? "" : "s"} retained · ${stamp(scans[0].iso)} to ${stamp(scans[scans.length - 1].iso)}`
+    ? `${scans.length} scan${scans.length === 1 ? "" : "s"} retained, ${stamp(scans[0].iso)} to ${stamp(scans[scans.length - 1].iso)}`
     : "";
   el.latest.disabled = scans.length === 0 || state.cursor === scans.length - 1;
   // One scan still gets a tick. Production regions retain a hundred and more,
@@ -466,7 +475,7 @@ function renderManifest(scan, meta) {
   };
 
   if (common) {
-    add("Satellite", common.satellite, `${common.product} · ${common.sensor.toUpperCase()}`);
+    add("Satellite", common.satellite, common.product);
     add("Domain", bboxLabel(common.bbox), common.description);
   }
 
@@ -474,7 +483,7 @@ function renderManifest(scan, meta) {
     add(
       "Skin temperature",
       `GFS ${clock(own.skin_temperature.cycle)} +${own.skin_temperature.forecast_hour} h`,
-      `valid ${clock(own.skin_temperature.valid_time)} · ${own.skin_temperature.source}`,
+      `valid ${clock(own.skin_temperature.valid_time)}, from ${own.skin_temperature.source}`,
     );
   } else {
     add("Skin temperature", pending);
@@ -497,7 +506,7 @@ function renderManifest(scan, meta) {
     add(
       "Produced by",
       `shachen ${common.shachen_version}`,
-      `ops ${common.shachen_ops_version} · layout ${common.layout_version}`,
+      `ops ${common.shachen_ops_version}, layout ${common.layout_version}`,
     );
   }
 
@@ -513,11 +522,11 @@ function renderManifest(scan, meta) {
   const hasField = assets ? assets.includes("debra.nc") : scan.hasField;
 
   el.manifestDownloads.innerHTML = `
-    <a class="download" href="${imageUrl(scan, "debra.png")}" download>DEBRA png</a>
-    <a class="download" href="${imageUrl(scan, "dustrgb.png")}" download>Dust RGB png</a>
+    <a class="download" href="${imageUrl(scan, "debra.png")}" download>Download DEBRA</a>
+    <a class="download" href="${imageUrl(scan, "dustrgb.png")}" download>Download Dust RGB</a>
     <a class="download" href="${imageUrl(scan, "debra.nc")}" download ${
       hasField ? "" : 'aria-disabled="true" title="Field data for this scan has passed out of retention"'
-    }>Field netCDF</a>`;
+    }>Download field data</a>`;
 }
 
 function setDetails(open) {
