@@ -74,6 +74,11 @@ class Region:
     keep_scans: int = KEEP_SCANS
     keep_field_scans: int = KEEP_FIELD_SCANS
     tuning: str = "abi"
+    #: Whether the enhanced PNG is coloured by ``cf_gated`` (DEBRA's confidence
+    #: with the :mod:`shachen_ops.gates` cloud gates) rather than ``cf_comb``.
+    #: Off is the algorithm as published, false yellow included; both fields
+    #: are in the netCDF either way.
+    gates: bool = True
     description: str = ""
 
     @property
@@ -107,6 +112,9 @@ def _region(key: str, entry: dict) -> Region:
         raise ValueError(
             f"region {key!r} has unknown tuning {tuning!r} (choose from {sorted(TUNING)})"
         )
+    gates = entry.get("gates", True)
+    if not isinstance(gates, bool):
+        raise ValueError(f"region {key!r} gates must be true or false, not {gates!r}")
     bbox = tuple(float(v) for v in entry["bbox"])
     if len(bbox) != 4:
         raise ValueError(f"region {key!r} bbox must be (lon_min, lat_min, lon_max, lat_max)")
@@ -143,6 +151,7 @@ def _region(key: str, entry: dict) -> Region:
         keep_scans=keep,
         keep_field_scans=keep_fields,
         tuning=tuning,
+        gates=gates,
         description=entry.get("description", ""),
     )
 

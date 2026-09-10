@@ -30,6 +30,14 @@ def test_valid_region_round_trips(tmp_path):
     assert region.constants is not None
 
 
+def test_gates_default_on_and_parse_off(tmp_path):
+    assert load_regions(write(tmp_path, VALID))["swus"].gates is True
+    off = load_regions(write(tmp_path, VALID + "gates = false\n"))["swus"]
+    assert off.gates is False
+    with pytest.raises(ValueError, match="gates must be true or false"):
+        load_regions(write(tmp_path, VALID + 'gates = "yes"\n'))
+
+
 def test_publish_cadence_defaults_to_the_scan_cadence(tmp_path):
     text = VALID.replace("publish_every_minutes = 30\n", "")
     assert load_regions(write(tmp_path, text))["swus"].publish_every_minutes == 5

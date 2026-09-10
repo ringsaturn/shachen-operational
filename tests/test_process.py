@@ -7,7 +7,8 @@ import pytest
 import xarray as xr
 
 from shachen_ops.bootstrap import MARGIN_DEG, subset
-from shachen_ops.process import NETCDF_VARS, write_netcdf
+from shachen_ops.config import Region
+from shachen_ops.process import NETCDF_VARS, product_fields, write_netcdf
 
 
 def result(shape=(4, 5)):
@@ -46,6 +47,83 @@ def test_a_missing_variable_is_skipped_rather_than_fatal(tmp_path):
     with xr.open_dataset(path) as stored:
         assert "dt3" not in stored.data_vars
         assert "cf_comb" in stored.data_vars
+
+
+# --- product fields: raw sums and the cloud gates ---------------------------
+
+
+def _field(values):
+    return xr.DataArray(np.asarray(values, dtype=float), dims=("y", "x"))
+
+
+def debra_output():
+    """A run_debra result reduced to what product_fields reads.
+
+    Pixel (0,0): DT3 only, dark -> the split-window gate zeroes it.
+    Pixel (0,1): dt1 fired, bright at noon -> the visible gate zeroes it.
+    Pixel (1,0): dt1 fired, dark -> kept.
+    Pixel (1,1): NaN confidence -> stays NaN.
+    """
+    return xr.Dataset(
+        {
+            "cf_comb": _field([[0.5, 0.5], [0.5, np.nan]]),
+            "dt1": _field([[0.0, 0.3], [0.3, 0.0]]),
+            "dt2": _field([[0.0, 0.0], [0.0, 0.0]]),
+            "dt3": _field([[0.6, 0.1], [0.1, 0.0]]),
+            "cm_norm_day": _field([[0.0, 0.0], [0.5, 0.0]]),
+            "cm_norm_ngt": _field([[0.0, 0.0], [0.0, 0.0]]),
+            "zenith_deg": _field([[30.0, 0.0], [30.0, 30.0]]),
+        }
+    )
+
+
+def scene():
+    return xr.Dataset({"refl_vis_064": _field([[10.0, 80.0], [10.0, 10.0]])})
+
+
+def region(gates=True):
+    return Region(
+        key="t",
+        satellite="Himawari-9",
+        sensor="ahi",
+        bucket="b",
+        product="p",
+        cadence_minutes=10,
+        bbox=(80.0, 30.0, 146.0, 55.0),
+        gates=gates,
+    )
+
+
+def test_product_fields_paints_cf_gated_and_leaves_cf_comb_alone():
+    debra = debra_output()
+    before = debra["cf_comb"].values.copy()
+    out, painted = product_fields(debra, scene(), region())
+    assert painted == "cf_gated"
+    assert out["cf_gated"].values[0, 0] == 0.0  # DT3 only
+    assert out["cf_gated"].values[0, 1] == 0.0  # bright
+    assert out["cf_gated"].values[1, 0] == 0.5  # corroborated and dark
+    assert np.isnan(out["cf_gated"].values[1, 1])
+    np.testing.assert_array_equal(out["cf_comb"].values, before)
+
+
+def test_product_fields_carries_the_raw_branch_sums():
+    out, _ = product_fields(debra_output(), scene(), region())
+    # Eq. 16 at (1,0): (dt1 + dt2 + dt3) * (1 - cm_norm_day) = 0.4 * 0.5
+    assert out["cf_day_raw"].values[1, 0] == pytest.approx(0.2)
+    assert {"cf_day_raw", "cf_trm_raw", "cf_ngt_raw"} <= set(out.data_vars)
+
+
+def test_product_fields_without_gates_paints_cf_comb():
+    out, painted = product_fields(debra_output(), scene(), region(gates=False))
+    assert painted == "cf_comb"
+    assert "cf_gated" not in out
+    assert "cf_day_raw" in out
+
+
+def test_every_product_field_is_published():
+    out, _ = product_fields(debra_output(), scene(), region())
+    for name in ("cf_comb", "cf_gated", "cf_day_raw", "cf_trm_raw", "cf_ngt_raw"):
+        assert name in NETCDF_VARS and name in out
 
 
 # --- CAMEL staging --------------------------------------------------------

@@ -11,9 +11,17 @@
 # keep_scans and keep_field_scans are the storage budget, in scans. The bucket
 # holds 2 GB and the pipeline writes ~1.8 GB a day, so the netCDF (four fifths
 # of the bytes) is retained for a shorter period than the imagery: at 48 scans
-# a day, 144 is three days of PNGs and 12 is six hours of debra.nc, for a
-# steady state near 1.5 GB across both regions. Raising either number raises
-# storage cost; see shachen_ops.retain.
+# a day, 144 is three days of PNGs and 8-12 is four to six hours of debra.nc,
+# for a steady state near 1.65 GB across both regions. Raising either number
+# raises storage cost; see shachen_ops.retain.
+#
+# tuning selects the DEBRA constant set: "abi" is shachen's ABI retune (the
+# Eq. 19 daytime floor at 0.40 rather than the printed 0.25, which is what
+# keeps clear-sky DT3 noise over vegetation from colouring; from shachen 0.3.0
+# the night branch has an interval of its own, so the retune no longer
+# flattens the night), "paper" the values as printed. gates (default true)
+# colours the enhanced PNG by cf_gated, DEBRA's confidence with the two cloud
+# gates in shachen_ops.gates applied; cf_comb is published unchanged beside it.
 
 [swus]
 satellite = "GOES-19"
@@ -26,6 +34,7 @@ keep_scans = 144
 keep_field_scans = 12
 bbox = [-115.0, 25.0, -95.0, 40.0]
 tuning = "abi"
+gates = true
 description = "Chihuahuan Desert / US Southwest"
 
 [gobi]
@@ -36,7 +45,8 @@ product = "AHI-L1b-FLDK"
 cadence_minutes = 10
 publish_every_minutes = 30
 keep_scans = 144
-keep_field_scans = 12
+keep_field_scans = 8
 bbox = [80.0, 30.0, 146.0, 55.0]
-tuning = "paper"
+tuning = "abi"
+gates = true
 description = "Gobi / Taklamakan through the North China Plain to Japan"

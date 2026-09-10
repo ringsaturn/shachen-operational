@@ -14,16 +14,29 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from shachen_ops import fetch
+from shachen_ops import fetch, gates
 from shachen_ops.config import Region
 from shachen_ops.scans import Scan
 
-#: Fields the published netCDF carries: the confidence product, the three dust
-#: tests behind it, the background signals, and the window BT for context.
+#: Fields the published netCDF carries: the confidence product and its gated
+#: form, the three raw branch sums behind them, the three dust tests, the
+#: background signals, and the window BT and visible reflectance for context.
 #: The two RGB composites are deliberately absent — they are two thirds of the
 #: uncompressed volume and the PNGs beside them already carry that picture.
+#:
+#: The raw sums (Eqs. 16-18 before the Eq. 19 normalization) are what makes
+#: the file re-scorable offline: Eq. 19 is a clipped monotone map, so a
+#: different interval or calibration can be applied to a published scan
+#: without the L1b. ``cf_comb`` alone cannot be inverted where it is 0, and
+#: ``dt1 + dt2 + dt3`` is not the raw sum — the cloud mask multiplies it.
+#: The reflectance is there so the visible gate can be re-thresholded the
+#: same way.
 NETCDF_VARS = (
     "cf_comb",
+    "cf_gated",
+    "cf_day_raw",
+    "cf_trm_raw",
+    "cf_ngt_raw",
     "dt1",
     "dt2",
     "dt3",
@@ -31,6 +44,7 @@ NETCDF_VARS = (
     "btd_bg",
     "zenith_deg",
     "bt_tir_104",
+    "refl_vis_064",
 )
 
 #: Deflate at level 4 — most of the ratio at a fraction of level 9's CPU — and
@@ -111,6 +125,26 @@ def render(result: xr.Dataset, out_dir: Path, region: Region, dpi: int = 150) ->
     return files
 
 
+def product_fields(debra: xr.Dataset, scene: xr.Dataset, region: Region) -> tuple[xr.Dataset, str]:
+    """``debra`` with this pipeline's additions, and the name of the field to paint.
+
+    Two things are added to what :func:`shachen.pipeline.run_debra` returns.
+    The raw branch sums (Eqs. 16-18 before Eq. 19) ride along so a published
+    scan can be re-scored offline; they are the algorithm's own intermediates.
+    With the region's ``gates`` on, ``cf_gated`` is the confidence with the
+    :mod:`shachen_ops.gates` cloud gates applied, and it is what the enhanced
+    PNG is coloured by; otherwise the PNG paints ``cf_comb``. ``cf_comb``
+    itself is never touched.
+    """
+    from shachen.confidence import confidence_raw
+
+    debra = debra.merge(confidence_raw(debra, debra, region.constants.confidence))
+    if not region.gates:
+        return debra, "cf_comb"
+    debra["cf_gated"] = gates.from_debra(debra, scene)
+    return debra, "cf_gated"
+
+
 def run_scan(
     region: Region,
     scan: Scan,
@@ -127,6 +161,12 @@ def run_scan(
     curve at the skin temperature — because it carries no state between scans;
     the composite background needs a rolling multi-day store and is not wired
     up here.
+
+    When the region has ``gates`` on (the default), the enhanced PNG is
+    coloured by ``cf_gated`` rather than ``cf_comb``: DEBRA's confidence with
+    the two :mod:`shachen_ops.gates` cloud gates applied. ``cf_comb`` is
+    computed and published exactly as `shachen` produced it either way; the
+    gates are a product-layer decision recorded in the scan's metadata.
     """
     from shachen.constants import COLOR_DIMMING
     from shachen.imagery import debra_imagery
@@ -150,10 +190,15 @@ def run_scan(
         load_band_emissivity(camel_path) if _is_raw_camel(camel_path) else _open(camel_path)
     )
 
-    debra = run_debra(scene, skin_temperature, emissivity, region.constants)
-    imagery = debra_imagery(scene, debra, region.constants, dimming)
+    debra, painted = product_fields(
+        run_debra(scene, skin_temperature, emissivity, region.constants), scene, region
+    )
+    # debra_imagery colours by ``cf_comb``; hand it the field to paint under
+    # that name. ``debra`` itself keeps cf_comb as computed.
+    imagery = debra_imagery(scene, debra.assign(cf_comb=debra[painted]), region.constants, dimming)
     result = xr.merge(
-        [debra, imagery, run_dust_rgb(scene), scene[["bt_tir_104"]]], combine_attrs="drop"
+        [debra, imagery, run_dust_rgb(scene), scene[["bt_tir_104", "refl_vis_064"]]],
+        combine_attrs="drop",
     )
     result.attrs.update(scene.attrs)
 
@@ -165,6 +210,11 @@ def run_scan(
         "reader": region.reader,
         "background": "semianalytic",
         "color": color,
+        # Which confidence field the enhanced PNG is coloured by, and what
+        # stands between cf_comb and it. A reader comparing scans across a
+        # configuration change needs this beside the picture.
+        "imagery_field": painted,
+        "gates": _gate_provenance() if region.gates else None,
         "l1b_files": len(l1b),
         "skin_temperature": ts_source.as_metadata(),
         "emissivity": {
@@ -176,6 +226,17 @@ def run_scan(
         },
     }
     return Artifacts(files=files, metadata=metadata)
+
+
+def _gate_provenance() -> dict:
+    """The gates :func:`shachen_ops.gates.from_debra` applies, as ``meta.json`` records them."""
+    return {
+        "split_window": "cf 0 where dt1 = dt2 = 0",
+        "visible": {
+            "refl_vis_064_over_cos_zenith_min_pct": gates.VIS_CLOUD_REFL_PCT,
+            "zenith_max_deg": gates.VIS_ZENITH_MAX_DEG,
+        },
+    }
 
 
 def _is_raw_camel(path: Path) -> bool:

@@ -8,8 +8,13 @@ Cloudflare R2. All compute runs on GitHub Actions.
 Each published scan carries two images and one data file: the DEBRA enhanced
 composite, in which dust is coloured by detection confidence over an
 unmodified background; the EUMETSAT Dust RGB over the same scene, as the
-baseline for comparison; and a netCDF of the confidence field and the dust
-tests it is derived from.
+baseline for comparison; and a netCDF of the confidence fields, the raw
+branch sums and dust tests they are derived from, and the inputs needed to
+re-score them.
+
+The confidence the composite is coloured by is `cf_gated`, not `cf_comb`:
+DEBRA's confidence with two cloud gates applied (see [Gates](#gates)).
+`cf_comb` is computed and published exactly as `shachen` produces it.
 
 ## Regions
 
@@ -19,6 +24,13 @@ tests it is derived from.
 | `gobi` | Himawari-9, `AHI-L1b-FLDK` | 80–146 °E, 30–55 °N | every 30 min |
 
 Regions live in [`regions.toml`](regions.toml); adding one is a config change.
+Both run shachen's `abi` constant set: the Eq. 19 daytime floor at 0.40
+rather than the printed 0.25, which is what keeps clear-sky DT3 noise over
+vegetation from colouring (on the retune, a pixel with only DT3 lit cannot
+reach 0.2 at all). Until shachen 0.3.0 that retune shared one interval
+between day and night and flattened the night branch, so `gobi` ran the
+printed values; 0.3.0 gives the night branch an interval of its own, and both
+regions now run the retune.
 `publish_every_minutes` is deliberately coarser than the sensor cadence: ABI
 scans CONUS every five minutes, and publishing all of it would be 288 runs a
 day per region.
@@ -45,6 +57,17 @@ shachen-ops/v1/{region}/latest.json                              pointer + recen
 shachen-ops/v1/{region}/index/{YYYY}/{MM}.json                   month listing
 ```
 
+`debra.nc` carries `cf_comb` and `cf_gated`; the raw branch sums `cf_day_raw`,
+`cf_trm_raw` and `cf_ngt_raw` (Eqs. 16–18 before the Eq. 19 normalization);
+the dust tests `dt1`, `dt2`, `dt3`; the background signals `rsw_bg` and
+`btd_bg`; and `zenith_deg`, `bt_tir_104` and `refl_vis_064` for context. The
+raw sums are what make a published scan re-scorable without its L1b: Eq. 19
+is a clipped monotone map of them, so another interval or a calibration can
+be applied afterwards. `cf_comb` alone cannot be inverted where it is 0, and
+`dt1 + dt2 + dt3` is not the raw sum, since the cloud mask multiplies it.
+The reflectance is there so the visible gate can be re-thresholded the same
+way.
+
 `latest.json` is the entry point. It carries `latest`, the full `meta.json`
 body of the newest published scan; `recent`, the last twelve scans as
 `{scan_start, prefix, assets}`; and `retention`, the retained lifetime of each
@@ -59,20 +82,61 @@ marks a scan published), then the month index, then `latest.json`. A reader
 following the pointer never arrives at a half-written scan, and a job that
 fails mid-publish leaves a scan that the next backfill redoes.
 
+## Gates
+
+On 2026-09-08 the `gobi` composite coloured most of the North China Plain and
+the Loess Plateau yellow on a day with no dust: 5.5% of the domain at 09:30Z
+and 2.1% at 23:00Z, with no station above 260 µg/m³ of PM10 and no station
+box above a confidence of 0.18. The pixels were the edge of a mid-level cloud
+band: 15–22 K colder than the NWP skin temperature, which is short of where
+CM1 (Eq. 1) starts masking, and neither deep convection nor cirrus, so the
+cloud mask scored them clear and Eq. 15's DT3 read the cold as dust, with no
+split-window signal at all (`dt1 = dt2 = 0`).
+
+`shachen_ops.gates` applies two product-layer gates on top of `cf_comb` and
+publishes the result as `cf_gated`, the field the composite is coloured by:
+
+* **Split-window gate**: no colour where neither split-window test responded
+  (`dt1 = dt2 = 0`). Cloud has no `dt1`; dust nearly always does. It works
+  around the clock and is the only gate there is at night.
+* **Visible gate**: no colour where the 0.64 µm reflectance divided by
+  cos(solar zenith) is at least 60%, at solar zenith up to 80°. Dividing by
+  the cosine is what lets one threshold mean the same cloud at 07:00 and at
+  noon; the threshold sits above lit dust (31–40% normalized) and below the
+  offending cloud (~70%).
+
+Neither gate is part of DEBRA (Eqs. 1–29) and neither is in `shachen`: the
+first changes Eq. 16 from a sum to a sum with a corroboration requirement,
+the second adds a test the published cloud mask does not have. The module is
+vendored from the research repository where the gates were measured, and that
+is where their numbers live. What they cost, on 42 dust days of East Asian
+station data (event-internal, so the false-alarm ratios are optimistic): at
+a confidence of 0.1 the daytime detection rate falls from 0.411 to 0.373 for
+a false-alarm ratio of 0.422 → 0.209, and the night rate from 0.232 to 0.220
+for 0.577 → 0.376; at 0.2 nothing moves, because a DT3-only pixel cannot
+reach 0.2 on the `abi` interval. On the two scans above the yellow area falls
+to 0.03% and 0.06% and every station box to 0.000.
+
+A gate is a gate: dust so thin that only DT3 saw it, or dust brighter than
+the visible threshold, is removed with the cloud, and sun glint over water is
+gated too. Each scan's `meta.json` records `imagery_field` (which confidence
+the PNG paints) and `gates` (the thresholds applied), and `regions.toml` can
+turn the gates off per region with `gates = false`, which paints `cf_comb`.
+
 ## Retention
 
-The bucket has a 2 GB budget and the pipeline writes about 1.8 GB a day, so
-nothing is kept indefinitely. `debra.nc` is four fifths of the bytes (7 MB
-for `swus`, 23 MB for `gobi`, against 4 MB of imagery), so it is retained for
+The bucket has a 2 GB budget and the pipeline writes about 2.5 GB a day, so
+nothing is kept indefinitely. `debra.nc` is most of the bytes (about 13 MB
+for `swus`, 40 MB for `gobi`, against 4 MB of imagery), so it is retained for
 a shorter period than the imagery:
 
 | Age | Retained objects |
 |---|---|
-| newest 12 scans (6 h) | everything, `debra.nc` included |
+| newest 8 (`gobi`, 4 h) or 12 (`swus`, 6 h) scans | everything, `debra.nc` included |
 | back to 144 scans (3 days) | `debra.png`, `dustrgb.png`, `meta.json` |
 | older | nothing; the scan is deleted |
 
-Steady state is near 1.5 GB across both regions. Both numbers are per region
+Steady state is near 1.65 GB across both regions. Both numbers are per region
 in `regions.toml` and are counts of scans rather than durations: a count
 bounds the bytes regardless of elapsed time, so the backlog published after an
 outage cannot take the bucket past its budget. Staged CAMEL months are kept
@@ -93,8 +157,9 @@ half-finished publish cannot desynchronise the policy from the bucket.
 
 Every `meta.json` records the inputs alongside the output: which GFS cycle and
 forecast hour supplied the skin temperature, which CAMEL month supplied the
-emissivity, which shachen version and constant set ran. Each output stays
-traceable to the fields it was computed from.
+emissivity, which shachen version and constant set ran, which confidence
+field the composite paints and what gates stand between `cf_comb` and it.
+Each output stays traceable to the fields it was computed from.
 
 ## How a scan is produced
 
@@ -104,6 +169,7 @@ fetch L1b         anonymous S3; for AHI only the strips the domain needs
 fetch ancillary   GFS skin temperature (one ranged GRIB read), CAMEL from R2
 load_scene        satpy -> bt_*/refl_* on the 2-km grid, cropped to the bbox
 run_debra         confidence field and intermediates
+raw sums + gates  cf_day/trm/ngt_raw for re-scoring; cf_gated for the picture
 run_dust_rgb      baseline composite
 render            georeferenced PNGs with coastlines and a graticule
 write netCDF      compressed, single precision
@@ -251,12 +317,15 @@ Measured on one scan of each region, on a laptop:
 | Wall time, cold | ~3 min | ~2.5 min |
 | Wall time, inputs cached | ~5 s | ~10 s |
 | Peak RSS | 2.9 GB | 2.6 GB |
-| Published per scan | ~11 MB | ~27 MB |
-| of which `debra.nc` | 7 MB | 23 MB |
+| Published per scan | ~17 MB (est.) | ~45 MB |
+| of which `debra.nc` | ~13 MB (est.) | 39–43 MB |
 
+`gobi` was measured on two scans after the raw sums, `cf_gated` and the
+reflectance were added to the netCDF (it was 23 MB before); `swus` is scaled
+from its earlier 7 MB by the same ratio and has not been re-measured.
 Fetching accounts for most of the wall time, and peak RSS stays within the
 16 GB of a 4-vCPU runner. At 48 scans a day across both regions that is about
-1.8 GB a day of new objects, against a 2 GB bucket, which is what the
+2.5 GB a day of new objects, against a 2 GB bucket, which is what the
 retention above reconciles and why `debra.nc` has the shortest retention.
 Steady state is near 1.5 GB, so R2 storage stays under one dollar a month and
 the writes (six per scan, ~17k a month) stay within the free tier.

@@ -8,7 +8,7 @@ requires-python = ">=3.12"
 authors = [{ name = "Han Xiao", email = "ringsaturn.me@gmail.com" }]
 
 dependencies = [
-    "shachen[satellite,data,render]==0.2.3",
+    "shachen[satellite,data,render]==0.3.0",
     "boto3>=1.40.0",
     "cfgrib>=0.9.15",
     "eccodes>=2.44.0",

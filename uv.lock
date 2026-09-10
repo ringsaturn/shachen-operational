@@ -2106,7 +2106,7 @@ wheels = [
 
 [[package]]
 name = "shachen"
-version = "0.2.3"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "global-land-mask" },
@@ -2116,9 +2116,9 @@ dependencies = [
     { name = "scipy" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/e9/1c5b1b92cecf033210a9703ad92c2958eaed7fd3e5d146b1ab11f24d422e/shachen-0.2.3.tar.gz", hash = "sha256:983ea963778ab488703fa8de7d13951680dada658891b04aa6a8e5e62682b691", size = 34293, upload-time = "2026-08-30T15:01:50.866Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/5a/25ab8a2a005f74eba0cdcf28b3d6a46e47599bdcbe0d7c27d3ef54da3f7f/shachen-0.3.0.tar.gz", hash = "sha256:bf3ecbf565eccfe3b5296cc708fba5d602d5090b120496a029557a18b94a9b64", size = 39172, upload-time = "2026-09-10T14:00:12.631Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/4e/6ec8af5f72423dbf536e655c99cf4abb2524365a3b8a71708af97724db0b/shachen-0.2.3-py3-none-any.whl", hash = "sha256:b293f0bf6bade4e0be847a4ecdbcb441d22734f81dd63e81cc04fdca270abd23", size = 43440, upload-time = "2026-08-30T15:01:49.559Z" },
+    { url = "https://files.pythonhosted.org/packages/41/b3/203fd616f79b841daf63bd323d6197067810687528fd56cddd0149aa3f5b/shachen-0.3.0-py3-none-any.whl", hash = "sha256:2e7ccd5a46592a09d841ccfd9b1ea18a704eb4b1e5fa08aabdd78de74cb80abe", size = 48626, upload-time = "2026-09-10T14:00:11.162Z" },
 ]
 
 [package.optional-dependencies]
@@ -2163,7 +2163,7 @@ requires-dist = [
     { name = "eccodes", specifier = ">=2.44.0" },
     { name = "eccodeslib", marker = "sys_platform != 'win32'", specifier = ">=2.48.0" },
     { name = "pyproj", specifier = ">=3.7.0" },
-    { name = "shachen", extras = ["satellite", "data", "render"], specifier = "==0.2.3" },
+    { name = "shachen", extras = ["satellite", "data", "render"], specifier = "==0.3.0" },
 ]
 
 [package.metadata.requires-dev]
