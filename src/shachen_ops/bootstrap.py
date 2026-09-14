@@ -16,6 +16,7 @@ staged file and echoed into every scan's metadata.
 """
 
 import datetime as dt
+import re
 from pathlib import Path
 
 import xarray as xr
@@ -47,6 +48,11 @@ def resolve_month(
     Returns ``(path, source_month)`` so callers can record which year was
     actually used. Nothing found within ``lookback`` years raises
     RuntimeError.
+
+    From shachen 0.3.0 ``fetch_emissivity`` walks back the years itself and
+    returns the earlier granule with a warning, so the month actually served
+    is read off the file it hands back rather than assumed to be the one
+    asked for; the loop here only matters for a shachen that raises instead.
     """
     from shachen.io.emissivity import fetch_emissivity
 
@@ -54,11 +60,28 @@ def resolve_month(
     for back in range(lookback + 1):
         candidate = month.replace(year=month.year - back, day=1)
         try:
-            return fetch_emissivity(candidate, out_dir), candidate
+            granule = fetch_emissivity(candidate, out_dir)
         except RuntimeError as error:  # no granule for that year; try the one before
             errors.append(f"{candidate:%Y-%m}: {error}")
+            continue
+        return granule, granule_month(granule) or candidate
     joined = "\n  ".join(errors)
     raise RuntimeError(f"no CAMEL granule for {month:%Y-%m} within {lookback} years:\n  {joined}")
+
+
+_GRANULE_MONTH_RE = re.compile(r"CAM5K30EM.*?(\d{4})(\d{2})")
+
+
+def granule_month(path: Path) -> dt.date | None:
+    """The month a CAMEL granule carries, from its ``CAM5K30EM_YYYYMM`` name.
+
+    ``None`` for a file not named that way, so a caller can fall back to the
+    month it asked for rather than fail on a renamed granule.
+    """
+    match = _GRANULE_MONTH_RE.search(Path(path).name)
+    if match is None:
+        return None
+    return dt.date(int(match.group(1)), int(match.group(2)), 1)
 
 
 def _dim(dataset: xr.Dataset, candidates: tuple[str, ...]) -> str:
