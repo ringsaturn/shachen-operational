@@ -246,7 +246,7 @@ standalone `prune` subcommand runs it separately.
 |---|---|---|
 | `ci` | push, PR | ruff, pytest, region table parses |
 | `process` | every 30 min, manual | backfill each region, then prune it, one job per region |
-| `bootstrap-ancillary` | manual | stage a region-month of CAMEL into R2 |
+| `bootstrap-ancillary` | 25th and 1st of each month, manual | stage this month's and next month's CAMEL for every region into R2 |
 | `web` | push touching `web/`, manual | deploy the viewer to Cloudflare Pages |
 
 `process` builds its matrix from `regions.toml`, so a new region needs no

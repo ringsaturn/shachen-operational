@@ -9,13 +9,22 @@ name: bootstrap-ancillary
 # a missing key, so an unstaged rollover breaks every region at 00:00 on the
 # first. The schedule below stages the upcoming month with days to spare, and
 # the dispatch inputs remain for restaging a bad subset or filling a gap.
+#
+# A scheduled run stages the current month and the next one, for every
+# region. Staging is idempotent (an existing key is overwritten with the same
+# subset), so the two runs a month back each other up: if Earthdata is down
+# on the 25th, the 1st restages the month that just started and the backfill
+# window covers the scans that failed meanwhile; if a region was added after
+# the 25th, the 1st stages its first month too.
 
 on:
   schedule:
     # 25th of each month, staging the month that starts next week. Retention
     # keeps the newest two CAMEL months per region, so staging ahead evicts
-    # the month before last rather than one still in use.
+    # the month before last rather than one still in use. The 1st is the
+    # retry.
     - cron: "0 3 25 * *"
+    - cron: "0 3 1 * *"
   workflow_dispatch:
     inputs:
       region:
@@ -61,17 +70,21 @@ jobs:
           ONLY: ${{ inputs.region }}
           MONTH: ${{ inputs.month }}
         run: |
-          # The scheduled run is the one that has to look forward; a dispatch
+          # The scheduled run stages this month and the next; a dispatch
           # with a blank month keeps meaning "the current one".
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            MONTH=$(python3 -c 'import datetime as dt; print(f"{dt.datetime.now(dt.UTC).date().replace(day=28) + dt.timedelta(days=7):%Y-%m}")')
-            echo "scheduled run: staging $MONTH"
+            MONTHS=$(python3 -c 'import datetime as dt; today = dt.datetime.now(dt.UTC).date(); print(f"{today:%Y-%m} {today.replace(day=28) + dt.timedelta(days=7):%Y-%m}")')
+            echo "scheduled run: staging $MONTHS"
+          else
+            MONTHS="$MONTH"
           fi
           keys=$(python3 -c "import tomllib;print(' '.join(sorted(tomllib.load(open('regions.toml','rb')))))")
           if [ -n "$ONLY" ]; then keys="$ONLY"; fi
           for key in $keys; do
-            if [ -n "$MONTH" ]; then
-              uv run shachen-ops bootstrap-camel --region "$key" --month "$MONTH"
+            if [ -n "$MONTHS" ]; then
+              for month in $MONTHS; do
+                uv run shachen-ops bootstrap-camel --region "$key" --month "$month"
+              done
             else
               uv run shachen-ops bootstrap-camel --region "$key"
             fi
