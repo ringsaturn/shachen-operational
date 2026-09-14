@@ -22,8 +22,15 @@ DEBRA's confidence with two cloud gates applied (see [Gates](#gates)).
 |---|---|---|---|
 | `swus` | GOES-19 (East), `ABI-L1b-RadC` | 115–95 °W, 25–40 °N | every 30 min |
 | `gobi` | Himawari-9, `AHI-L1b-FLDK` | 80–146 °E, 30–55 °N | every 30 min |
+| `atlantic` | GOES-19 (East), `ABI-L1b-RadF` | 100–15 °W, 0–35 °N | every 30 min |
 
 Regions live in [`regions.toml`](regions.toml); adding one is a config change.
+`atlantic` follows Saharan dust from the African coast across the tropical
+Atlantic to the Caribbean and the Gulf; GOES-East sees Cape Verde and the
+Senegal coast at a satellite zenith near 60°, and the Sahara itself not at
+all, so the domain starts where the transport does. It runs the full-disk
+product because CONUS ends at 60 °W, and keeps only two field files: its
+`debra.nc` is roughly ten times a `swus` one.
 Both run shachen's `abi` constant set: the Eq. 19 daytime floor at 0.40
 rather than the printed 0.25, which is what keeps clear-sky DT3 noise over
 vegetation from colouring (on the retune, a pixel with only DT3 lit cannot

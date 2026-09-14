@@ -50,3 +50,17 @@ bbox = [80.0, 30.0, 146.0, 55.0]
 tuning = "abi"
 gates = true
 description = "Gobi / Taklamakan through the North China Plain to Japan"
+
+[atlantic]
+satellite = "GOES-19"
+sensor = "abi"
+bucket = "noaa-goes19"
+product = "ABI-L1b-RadF"
+cadence_minutes = 10
+publish_every_minutes = 30
+keep_scans = 144
+keep_field_scans = 2
+bbox = [-100.0, 0.0, -15.0, 35.0]
+tuning = "abi"
+gates = true
+description = "Saharan dust transport: Cape Verde to the Caribbean and Gulf"
