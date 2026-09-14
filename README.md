@@ -318,18 +318,21 @@ project itself is created by the first deploy.
 
 Measured on one scan of each region, on a laptop:
 
-| | `swus` (ABI) | `gobi` (AHI) |
-|---|---|---|
-| L1b downloaded | 95 MB | 77 MB (3 of 10 strips) |
-| Wall time, cold | ~3 min | ~2.5 min |
-| Wall time, inputs cached | ~5 s | ~10 s |
-| Peak RSS | 2.9 GB | 2.6 GB |
-| Published per scan | ~17 MB (est.) | ~45 MB |
-| of which `debra.nc` | ~13 MB (est.) | 39–43 MB |
+| | `swus` (ABI) | `gobi` (AHI) | `atlantic` (ABI full disk) |
+|---|---|---|---|
+| L1b downloaded | 95 MB | 77 MB (3 of 10 strips) | 558 MB |
+| Wall time, cold | ~3 min | ~2.5 min | 6–8.5 min |
+| Wall time, inputs cached | ~5 s | ~10 s | ~25 s |
+| Peak RSS | 2.9 GB | 2.6 GB | 6.3 GB |
+| Published per scan | ~17 MB (est.) | ~45 MB | ~100 MB |
+| of which `debra.nc` | ~13 MB (est.) | 39–43 MB | 93–95 MB |
 
 `gobi` was measured on two scans after the raw sums, `cf_gated` and the
 reflectance were added to the netCDF (it was 23 MB before); `swus` is scaled
 from its earlier 7 MB by the same ratio and has not been re-measured.
+`atlantic` was measured on two scans (1728 × 3807 pixels, 2.8 times `gobi`);
+the cold wall time is almost all the full-disk fetch, the 0.5-km C02 file
+alone being 371 MB, and it varied between the two scans by 130 s.
 Fetching accounts for most of the wall time, and peak RSS stays within the
 16 GB of a 4-vCPU runner. At 48 scans a day across both regions that is about
 2.5 GB a day of new objects, against a 2 GB bucket, which is what the
