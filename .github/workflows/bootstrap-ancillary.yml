@@ -17,14 +17,10 @@ name: bootstrap-ancillary
 # window covers the scans that failed meanwhile; if a region was added after
 # the 25th, the 1st stages its first month too.
 
+# Retired (2026-10-10): the viewer's own pipeline stages the same months into
+# the same prefix on its own schedule now. The dispatch stays for a manual
+# restage.
 on:
-  schedule:
-    # 25th of each month, staging the month that starts next week. Retention
-    # keeps the newest two CAMEL months per region, so staging ahead evicts
-    # the month before last rather than one still in use. The 1st is the
-    # retry.
-    - cron: "0 3 25 * *"
-    - cron: "0 3 1 * *"
   workflow_dispatch:
     inputs:
       region:
