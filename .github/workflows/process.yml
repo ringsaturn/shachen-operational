@@ -1,11 +1,10 @@
 name: process
 
+# Retired 2026-10-10: the dust confidence is published by xue
+# (https://github.com/ringsaturn/xue, the `dustcf` bundle of its himawari,
+# goeseast and goeswest sources, with ZHOUYE beside it as `zhouye`). The schedule
+# is gone; a dispatch still runs a region for comparison.
 on:
-  schedule:
-    # Every half hour. GitHub's scheduler is best-effort and routinely fires
-    # five to fifteen minutes late, which is why the job backfills a window
-    # rather than assuming the cron told it which scan to process.
-    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       region:

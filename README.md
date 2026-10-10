@@ -1,5 +1,18 @@
 # shachen-operational
 
+> **Retired (2026-10-10).** The live dust confidence is now published by
+> [xue](https://github.com/ringsaturn/xue) as the `dustcf` bundle of its
+> `himawari`, `goeseast` and `goeswest` sources (DEBRA with the split-window
+> gate, as here), beside a second bundle `zhouye` on shachen 0.4.0's ZHOUYE
+> scheme (DEBRA by day, night read at the day's level), over the same three
+> staged CAMEL regions plus every sea the disks cover; xue stages the
+> CAMEL months itself (`stage-ancillary.yml` there). The `process`
+> schedule here is removed and the viewer no longer updates; the
+> `bootstrap-ancillary` schedule stays until xue's staging workflow has
+> run green once with the Earthdata secrets, then it goes too, and the
+> `shachen-ops/v1/` scans on the bucket can be pruned by hand. The rest of
+> this README describes the pipeline as it ran.
+
 An unattended pipeline that runs [shachen](https://github.com/ringsaturn/shachen)'s
 DEBRA-Dust algorithm on live GOES ABI and Himawari AHI data from the AWS Open
 Data buckets and publishes the results (imagery, fields, and manifests) to
